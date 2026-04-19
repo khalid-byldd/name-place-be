@@ -48,33 +48,39 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Get room details by ID
-router.get("/:roomId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const roomId = parseInt(req.params.roomId);
+router.get(
+  "/:roomId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId as string);
 
-    if (isNaN(roomId)) {
-      return res.status(400).json({ message: "Invalid room ID" });
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const room = await roomService.getRoomById(roomId);
+      res.json(room);
+    } catch (error) {
+      next(error);
     }
-
-    const room = await roomService.getRoomById(roomId);
-    res.json(room);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Get room by code (for joining)
-router.get("/code/:code", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { code } = req.params;
-    const room = await roomService.getRoomByCode(code);
+router.get(
+  "/code/:code",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { code } = req.params;
+      const room = await roomService.getRoomByCode(code as string);
 
-    const roomDetails = await roomService.getRoomById(room.id);
-    res.json(roomDetails);
-  } catch (error) {
-    next(error);
-  }
-});
+      const roomDetails = await roomService.getRoomById(room.id);
+      res.json(roomDetails);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // Update room settings (admin only)
 router.put(
@@ -82,7 +88,7 @@ router.put(
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
       const { name, roundCount, roundTime, status } = req.body;
 
       if (isNaN(roomId)) {
@@ -103,7 +109,7 @@ router.put(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Close/delete room (admin only)
@@ -112,7 +118,7 @@ router.delete(
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -123,7 +129,7 @@ router.delete(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;

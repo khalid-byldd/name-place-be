@@ -97,7 +97,8 @@ export const roomService = {
     };
 
     if (input.name !== undefined) updateData.name = input.name;
-    if (input.roundCount !== undefined) updateData.roundCount = input.roundCount;
+    if (input.roundCount !== undefined)
+      updateData.roundCount = input.roundCount;
     if (input.roundTime !== undefined) updateData.roundTime = input.roundTime;
     if (input.status !== undefined) updateData.status = input.status;
 
@@ -161,7 +162,7 @@ export const roomService = {
           playerCount,
           createdAt: room.createdAt,
         };
-      })
+      }),
     );
 
     return roomsWithPlayers;
