@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "../../utils/logger";
 
 interface RoomWSClient {
-  socket: WebSocket;
+  socket: any;
   roomId: number;
   playerId: number;
   playerName: string;
@@ -15,7 +15,7 @@ const activeConnections = new Map<number, Set<RoomWSClient>>();
 
 export const roomWsManager = {
   async joinRoom(
-    socket: WebSocket,
+    socket: any,
     roomId: number,
     playerId: number,
     playerName: string
@@ -23,6 +23,9 @@ export const roomWsManager = {
     if (!activeConnections.has(roomId)) {
       activeConnections.set(roomId, new Set());
     }
+
+    // Store metadata on socket for later use
+    socket.playerName = playerName;
 
     const client: RoomWSClient = { socket, roomId, playerId, playerName };
     activeConnections.get(roomId)!.add(client);
