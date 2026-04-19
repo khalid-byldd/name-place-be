@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { rooms, players } from "../../db/schema";
+import { rooms, players, rounds, categories } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
 import { roomWsManager } from "./room.ws";
 
@@ -20,6 +20,26 @@ const generateRoomCode = (): string => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
+const generateRandomLetter = (): string => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return letters[Math.floor(Math.random() * letters.length)];
+};
+
+const selectRandomCategories = (allCategories: any[], count: number = 4): string => {
+  if (allCategories.length === 0) {
+    return "";
+  }
+
+  const selected: number[] = [];
+  const shuffled = [...allCategories].sort(() => 0.5 - Math.random());
+
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    selected.push(shuffled[i].id);
+  }
+
+  return selected.join(",");
+};
+
 export const roomService = {
   async createRoom(input: CreateRoomInput) {
     const code = generateRoomCode();
@@ -34,6 +54,25 @@ export const roomService = {
         status: "WAITING",
       })
       .returning();
+
+    // Fetch all categories
+    const allCategories = await db.query.categories.findMany();
+
+    // Create all rounds for the room
+    const roundsData: any[] = [];
+    for (let i = 1; i <= input.roundCount; i++) {
+      const letter = generateRandomLetter();
+      const categoryIds = selectRandomCategories(allCategories, 4);
+
+      roundsData.push({
+        roomId: newRoom[0].id,
+        roundNumber: i,
+        letter,
+        categoryIds,
+      });
+    }
+
+    await db.insert(rounds).values(roundsData);
 
     const roomData = {
       id: newRoom[0].id,
@@ -64,6 +103,10 @@ export const roomService = {
       where: eq(players.roomId, roomId),
     });
 
+    const roomRounds = await db.query.rounds.findMany({
+      where: eq(rounds.roomId, roomId),
+    });
+
     return {
       id: room.id,
       name: room.name,
@@ -72,6 +115,7 @@ export const roomService = {
       roundTime: room.roundTime,
       status: room.status,
       playerCount: playersInRoom.length,
+      roundsCount: roomRounds.length,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };
@@ -201,5 +245,23 @@ export const roomService = {
     );
 
     return roomsWithPlayers;
+  },
+
+  async getRoundsByRoom(roomId: number) {
+    const roomRounds = await db.query.rounds.findMany({
+      where: eq(rounds.roomId, roomId),
+    });
+
+    return roomRounds.map((r) => ({
+      id: r.id,
+      roomId: r.roomId,
+      roundNumber: r.roundNumber,
+      letter: r.letter,
+      categoryIds: r.categoryIds.split(",").map((id) => parseInt(id)),
+      timeTaken: r.timeTaken,
+      score: r.score,
+      playerId: r.playerId,
+      createdAt: r.createdAt,
+    }));
   },
 };

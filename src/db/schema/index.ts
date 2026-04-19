@@ -94,7 +94,8 @@ export const rounds = pgTable("rounds", {
   timeTaken: integer("time_taken"),
   score: integer("score"),
 
-  letter: varchar("letter", { length: 2 }),
+  letter: varchar("letter", { length: 2 }).notNull(),
+  categoryIds: text("category_ids").notNull(),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

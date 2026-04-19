@@ -96,6 +96,29 @@ router.get(
   }
 );
 
+// Get all rounds for a room
+router.get(
+  "/:roomId/rounds",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const roomRounds = await roomService.getRoundsByRoom(roomId);
+      res.json({
+        roomId,
+        rounds: roomRounds,
+        roundCount: roomRounds.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Update room settings (admin only)
 router.put(
   "/:roomId",
