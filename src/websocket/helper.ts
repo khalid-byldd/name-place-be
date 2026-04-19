@@ -2,10 +2,12 @@ import { WebSocket } from "ws";
 import { WSMessage } from "../types/ws";
 import { logger } from "../utils/logger";
 import { roomWsManager } from "../modules/room/room.ws";
+import { playerService } from "../modules/player/player.service";
 
 interface ExtendedSocket extends WebSocket {
   roomId?: number;
   playerId?: number;
+  playerName?: string;
 }
 
 export const handleWSConnection = (socket: ExtendedSocket) => {
@@ -71,11 +73,48 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                 type: "ROOM_MESSAGE",
                 payload: {
                   playerId: socket.playerId,
-                  playerName: message.payload.playerName,
+                  playerName: socket.playerName,
                   message: message.payload.message,
                   timestamp: new Date(),
                 },
               });
+            }
+          }
+          break;
+
+        case "PLAYER_UPDATE":
+          {
+            const playerId = socket.playerId;
+            const { name, status } = message.payload;
+            if (playerId) {
+              try {
+                await playerService.updatePlayer(playerId, { name, status });
+                socket.send(
+                  JSON.stringify({
+                    type: "PLAYER_UPDATED",
+                    payload: { playerId, name, status },
+                  })
+                );
+
+                // Broadcast to room if player is in one
+                if (socket.roomId) {
+                  roomWsManager.broadcastToRoom(socket.roomId, {
+                    type: "PLAYER_UPDATED",
+                    payload: {
+                      playerId,
+                      name: name || socket.playerName,
+                      timestamp: new Date(),
+                    },
+                  });
+                }
+              } catch (err) {
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: "Failed to update player",
+                  })
+                );
+              }
             }
           }
           break;
