@@ -153,4 +153,20 @@ export const roomWsManager = {
   getRoomMetadata(roomId: number) {
     return roomMetadata.get(roomId);
   },
+
+  disconnectPlayer(playerId: number, reason?: string) {
+    let disconnected = false;
+    activeConnections.forEach((clients) => {
+      clients.forEach((client) => {
+        if (client.playerId === playerId) {
+          if (client.socket.readyState === 1) {
+            client.socket.close(1000, reason || "Disconnected");
+          }
+          clients.delete(client);
+          disconnected = true;
+        }
+      });
+    });
+    return disconnected;
+  },
 };
