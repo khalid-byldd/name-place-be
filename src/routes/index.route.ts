@@ -11,7 +11,7 @@ const router = Router();
 router.use("/health", healthRoute);
 router.use("/auth", authRoute);
 router.use("/dashboard", authenticate, requireAdmin, dashboardRoute);
-router.use("/rooms", authenticate, roomRoute);
+router.use("/rooms", authenticate, requireAdmin, roomRoute);
 router.use("/players", playerRoute);
 
 export default router;

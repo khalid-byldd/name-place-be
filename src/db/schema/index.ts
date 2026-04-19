@@ -86,15 +86,11 @@ export const rounds = pgTable("rounds", {
     onDelete: "cascade",
   }),
 
-  playerId: integer("player_id").references(() => players.id, {
-    onDelete: "cascade",
-  }),
+  categoryIds: text("categoryIds"),
 
   roundNumber: integer("round_number").notNull(),
-  timeTaken: integer("time_taken"),
-  score: integer("score"),
 
-  letter: varchar("letter", { length: 2 }),
+  letter: varchar("letter", { length: 1 }),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -109,11 +105,11 @@ export const roundAnswers = pgTable("round_answers", {
     onDelete: "cascade",
   }),
 
-  categoryId: integer("category_id").references(() => categories.id, {
-    onDelete: "cascade",
-  }),
+  timeTaken: integer("time_taken"),
 
-  answer: text("answer"),
+  score: integer("score"),
+
+  answers: text("answers"),
 
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -26,48 +26,57 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Get player details
-router.get("/:playerId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const playerId = parseInt(req.params.playerId);
+router.get(
+  "/:playerId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const playerId = parseInt(req.params.playerId as string);
 
-    if (isNaN(playerId)) {
-      return res.status(400).json({ message: "Invalid player ID" });
+      if (isNaN(playerId)) {
+        return res.status(400).json({ message: "Invalid player ID" });
+      }
+
+      const player = await playerService.getPlayerById(playerId);
+      res.json(player);
+    } catch (error) {
+      next(error);
     }
-
-    const player = await playerService.getPlayerById(playerId);
-    res.json(player);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Update player name/status
-router.put("/:playerId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const playerId = parseInt(req.params.playerId);
-    const { name, status } = req.body;
+router.put(
+  "/:playerId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const playerId = parseInt(req.params.playerId as string);
+      const { name, status } = req.body;
 
-    if (isNaN(playerId)) {
-      return res.status(400).json({ message: "Invalid player ID" });
+      if (isNaN(playerId)) {
+        return res.status(400).json({ message: "Invalid player ID" });
+      }
+
+      const updated = await playerService.updatePlayer(playerId, {
+        name,
+        status,
+      });
+
+      res.json({
+        message: "Player updated successfully",
+        player: updated,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const updated = await playerService.updatePlayer(playerId, { name, status });
-
-    res.json({
-      message: "Player updated successfully",
-      player: updated,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Join room by code
 router.post(
   "/:playerId/join-room",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const playerId = parseInt(req.params.playerId);
+      const playerId = parseInt(req.params.playerId as string);
       const { code } = req.body;
 
       if (isNaN(playerId)) {
@@ -93,7 +102,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Leave room
@@ -101,7 +110,7 @@ router.post(
   "/:playerId/leave-room",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const playerId = parseInt(req.params.playerId);
+      const playerId = parseInt(req.params.playerId as string);
 
       if (isNaN(playerId)) {
         return res.status(400).json({ message: "Invalid player ID" });
@@ -116,24 +125,27 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Delete player
-router.delete("/:playerId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const playerId = parseInt(req.params.playerId);
+router.delete(
+  "/:playerId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const playerId = parseInt(req.params.playerId as string);
 
-    if (isNaN(playerId)) {
-      return res.status(400).json({ message: "Invalid player ID" });
+      if (isNaN(playerId)) {
+        return res.status(400).json({ message: "Invalid player ID" });
+      }
+
+      const result = await playerService.deletePlayer(playerId);
+      res.json(result);
+    } catch (error) {
+      next(error);
     }
-
-    const result = await playerService.deletePlayer(playerId);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Ban player (admin only)
 router.post(
@@ -141,7 +153,7 @@ router.post(
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const playerId = parseInt(req.params.playerId);
+      const playerId = parseInt(req.params.playerId as string);
       const { reason } = req.body;
 
       if (isNaN(playerId)) {
@@ -153,7 +165,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Get players in a room
@@ -161,7 +173,7 @@ router.get(
   "/room/:roomId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -177,7 +189,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;
