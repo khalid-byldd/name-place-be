@@ -16,6 +16,7 @@ export const roomStatusEnum = pgEnum("room_status", [
 ]);
 
 export const playerStatusEnum = pgEnum("player_status", ["ACTIVE", "INACTIVE"]);
+export const userRoleEnum = pgEnum("user_role", ["ADMIN", "USER"]);
 
 /* ================= USERS ================= */
 
@@ -24,6 +25,7 @@ export const users = pgTable("users", {
 
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: text("password").notNull(),
+  role: userRoleEnum("role").default("USER").notNull(),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -113,4 +115,18 @@ export const roundAnswers = pgTable("round_answers", {
   answer: text("answer"),
 
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+/* ================= BANNED PLAYERS ================= */
+
+export const bannedPlayers = pgTable("banned_players", {
+  id: integer("id").primaryKey(),
+
+  playerId: integer("player_id").references(() => players.id, {
+    onDelete: "cascade",
+  }),
+
+  reason: text("reason"),
+
+  bannedAt: timestamp("banned_at").defaultNow(),
 });
