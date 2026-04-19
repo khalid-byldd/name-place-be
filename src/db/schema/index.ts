@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   pgEnum,
+  serial,
 } from "drizzle-orm/pg-core";
 
 /* ================= ENUMS ================= */
@@ -21,7 +22,7 @@ export const userRoleEnum = pgEnum("user_role", ["ADMIN", "USER"]);
 /* ================= USERS ================= */
 
 export const users = pgTable("users", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: text("password").notNull(),
@@ -34,7 +35,7 @@ export const users = pgTable("users", {
 /* ================= ROOMS ================= */
 
 export const rooms = pgTable("rooms", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 10 }).notNull().unique(),
@@ -51,7 +52,7 @@ export const rooms = pgTable("rooms", {
 /* ================= PLAYERS ================= */
 
 export const players = pgTable("players", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   name: varchar("name", { length: 255 }).notNull(),
 
@@ -68,7 +69,7 @@ export const players = pgTable("players", {
 /* ================= CATEGORIES ================= */
 
 export const categories = pgTable("categories", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   name: varchar("name", { length: 255 }).notNull(),
 
@@ -79,7 +80,7 @@ export const categories = pgTable("categories", {
 /* ================= ROUNDS ================= */
 
 export const rounds = pgTable("rounds", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   roomId: integer("room_id").references(() => rooms.id, {
     onDelete: "cascade",
@@ -102,7 +103,7 @@ export const rounds = pgTable("rounds", {
 /* ================= ROUND ANSWERS ================= */
 
 export const roundAnswers = pgTable("round_answers", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   roundId: integer("round_id").references(() => rounds.id, {
     onDelete: "cascade",
@@ -120,7 +121,7 @@ export const roundAnswers = pgTable("round_answers", {
 /* ================= BANNED PLAYERS ================= */
 
 export const bannedPlayers = pgTable("banned_players", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
 
   playerId: integer("player_id").references(() => players.id, {
     onDelete: "cascade",

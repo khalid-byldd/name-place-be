@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { roomService } from "../modules/room/room.service";
+import { roomWsManager } from "../modules/room/room.ws";
 import { requireAdmin } from "../middleware";
 
 const router = Router();
@@ -75,6 +76,25 @@ router.get("/code/:code", async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 });
+
+// Get connected players in room (WS clients)
+router.get(
+  "/:roomId/players-connected",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const data = await roomWsManager.getRoomConnectedPlayers(roomId);
+      res.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // Update room settings (admin only)
 router.put(
