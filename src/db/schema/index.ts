@@ -90,7 +90,7 @@ export const rounds = pgTable("rounds", {
 
   roundNumber: integer("round_number").notNull(),
 
-  letter: varchar("letter", { length: 1 }),
+  letter: varchar("letter", { length: 2 }).notNull(),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
