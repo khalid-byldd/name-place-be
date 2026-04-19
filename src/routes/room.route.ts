@@ -88,7 +88,7 @@ router.get(
   "/:roomId/players-connected",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -99,7 +99,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Update room settings (admin only)
