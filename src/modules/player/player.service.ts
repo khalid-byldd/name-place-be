@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import { players, bannedPlayers } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
+import { roomWsManager } from "../room/room.ws";
 
 export interface CreatePlayerInput {
   name: string;
@@ -79,6 +80,20 @@ export const playerService = {
       .where(eq(players.id, playerId))
       .returning();
 
+    // Broadcast player update to room if player is in one
+    if (updated[0].roomId) {
+      roomWsManager.broadcastToRoom(updated[0].roomId, {
+        type: "PLAYER_INFO_CHANGED",
+        payload: {
+          playerId: updated[0].id,
+          name: updated[0].name,
+          status: updated[0].status,
+          changedVia: "api",
+          timestamp: new Date(),
+        },
+      });
+    }
+
     return {
       id: updated[0].id,
       name: updated[0].name,
@@ -112,6 +127,17 @@ export const playerService = {
       .where(eq(players.id, playerId))
       .returning();
 
+    // Broadcast to WebSocket room that player joined via API
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "PLAYER_JOINED_ROOM",
+      payload: {
+        playerId: updated[0].id,
+        playerName: updated[0].name,
+        joinedVia: "api",
+        timestamp: new Date(),
+      },
+    });
+
     return {
       id: updated[0].id,
       name: updated[0].name,
@@ -129,11 +155,26 @@ export const playerService = {
       throw { status: 404, message: "Player not found" };
     }
 
+    const roomId = player.roomId;
+
     const updated = await db
       .update(players)
       .set({ roomId: null, updatedAt: new Date() })
       .where(eq(players.id, playerId))
       .returning();
+
+    // Broadcast to WebSocket room that player left via API
+    if (roomId) {
+      roomWsManager.broadcastToRoom(roomId, {
+        type: "PLAYER_LEFT_ROOM",
+        payload: {
+          playerId: updated[0].id,
+          playerName: updated[0].name,
+          leftVia: "api",
+          timestamp: new Date(),
+        },
+      });
+    }
 
     return {
       id: updated[0].id,
@@ -173,6 +214,22 @@ export const playerService = {
         reason: reason || "No reason provided",
       })
       .returning();
+
+    // Disconnect player from websocket
+    roomWsManager.disconnectPlayer(playerId, "Player has been banned");
+
+    // Notify room if player is in one
+    if (player.roomId) {
+      roomWsManager.broadcastToRoom(player.roomId, {
+        type: "PLAYER_BANNED",
+        payload: {
+          playerId: player.id,
+          playerName: player.name,
+          reason: reason || "No reason provided",
+          timestamp: new Date(),
+        },
+      });
+    }
 
     return { message: "Player banned successfully" };
   },

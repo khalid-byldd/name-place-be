@@ -12,8 +12,16 @@ interface RoomWSClient {
 }
 
 const activeConnections = new Map<number, Set<RoomWSClient>>();
+const roomMetadata = new Map<number, { name: string; createdAt: Date }>();
 
 export const roomWsManager = {
+  initializeRoom(roomId: number, roomName: string) {
+    roomMetadata.set(roomId, {
+      name: roomName,
+      createdAt: new Date(),
+    });
+    logger.info(`Room ${roomId} initialized for WebSocket connections`);
+  },
   async joinRoom(
     socket: any,
     roomId: number,
@@ -125,5 +133,40 @@ export const roomWsManager = {
       connectedPlayers: this.getRoomPlayers(roomId),
       playerCount: clients.size,
     };
+  },
+
+  closeRoom(roomId: number) {
+    const clients = activeConnections.get(roomId);
+    if (!clients) return;
+
+    clients.forEach((client) => {
+      if (client.socket.readyState === 1) {
+        client.socket.close(1000, "Room closed");
+      }
+    });
+
+    activeConnections.delete(roomId);
+    roomMetadata.delete(roomId);
+    logger.info(`Room ${roomId} closed and all connections terminated`);
+  },
+
+  getRoomMetadata(roomId: number) {
+    return roomMetadata.get(roomId);
+  },
+
+  disconnectPlayer(playerId: number, reason?: string) {
+    let disconnected = false;
+    activeConnections.forEach((clients) => {
+      clients.forEach((client) => {
+        if (client.playerId === playerId) {
+          if (client.socket.readyState === 1) {
+            client.socket.close(1000, reason || "Disconnected");
+          }
+          clients.delete(client);
+          disconnected = true;
+        }
+      });
+    });
+    return disconnected;
   },
 };

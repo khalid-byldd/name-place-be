@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import { rooms, players } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
+import { roomWsManager } from "./room.ws";
 
 export interface CreateRoomInput {
   name: string;
@@ -34,7 +35,7 @@ export const roomService = {
       })
       .returning();
 
-    return {
+    const roomData = {
       id: newRoom[0].id,
       name: newRoom[0].name,
       code: newRoom[0].code,
@@ -43,6 +44,11 @@ export const roomService = {
       status: newRoom[0].status,
       createdAt: newRoom[0].createdAt,
     };
+
+    // Notify WebSocket that room is ready for connections
+    roomWsManager.initializeRoom(newRoom[0].id, newRoom[0].name);
+
+    return roomData;
   },
 
   async getRoomById(roomId: number) {
@@ -108,6 +114,23 @@ export const roomService = {
       .where(eq(rooms.id, roomId))
       .returning();
 
+    // Broadcast room update to all connected WebSocket clients
+    if (input.status !== undefined) {
+      roomWsManager.updateRoomStatus(roomId, input.status);
+    }
+
+    if (input.name !== undefined || input.roundCount !== undefined || input.roundTime !== undefined) {
+      roomWsManager.broadcastToRoom(roomId, {
+        type: "ROOM_SETTINGS_CHANGED",
+        payload: {
+          name: input.name,
+          roundCount: input.roundCount,
+          roundTime: input.roundTime,
+          timestamp: new Date(),
+        },
+      });
+    }
+
     return {
       id: updated[0].id,
       name: updated[0].name,
@@ -128,10 +151,23 @@ export const roomService = {
       throw { status: 404, message: "Room not found" };
     }
 
-    // Delete all players in the room first (cascade will handle it)
+    // Notify all connected WebSocket clients before closing
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "ROOM_CLOSED",
+      payload: {
+        roomId,
+        message: "Room has been closed by admin",
+        timestamp: new Date(),
+      },
+    });
+
+    // Disconnect all WebSocket clients in the room
+    roomWsManager.closeRoom(roomId);
+
+    // Delete all players in the room
     await db.delete(players).where(eq(players.roomId, roomId));
 
-    // Then delete the room
+    // Delete the room
     await db.delete(rooms).where(eq(rooms.id, roomId));
 
     return { message: "Room closed successfully" };
