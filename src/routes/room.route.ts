@@ -8,7 +8,7 @@ const router = Router();
 // Create a new room
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, roundCount, roundTime } = req.body;
+    const { name, roundCount, roundTime, categoryIds } = req.body;
 
     if (!name || roundCount === undefined || roundTime === undefined) {
       return res.status(400).json({
@@ -20,6 +20,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       name,
       roundCount,
       roundTime,
+      categoryIds: categoryIds || undefined,
     });
 
     res.status(201).json({
