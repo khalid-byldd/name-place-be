@@ -286,6 +286,11 @@ export const roomService = {
     }));
   },
 
+  /**
+   * START ROOM - Admin Only
+   * This is the ONLY way to move a room from WAITING to IN_PROGRESS
+   * Once IN_PROGRESS, rounds can be advanced via ROUND_OVER events
+   */
   async startRoom(roomId: number) {
     const room = await db.query.rooms.findFirst({
       where: eq(rooms.id, roomId),
@@ -346,8 +351,10 @@ export const roomService = {
       throw { status: 404, message: "Room not found" };
     }
 
+    // CRITICAL: Room must be IN_PROGRESS to increment rounds
+    // Room can ONLY be moved to IN_PROGRESS via admin-only START API
     if (room.status !== "IN_PROGRESS") {
-      throw { status: 400, message: "Room is not in progress" };
+      throw { status: 400, message: "Room is not in progress. Cannot advance rounds." };
     }
 
     if (!room.roundStartedAt) {
@@ -410,13 +417,19 @@ export const roomService = {
     };
   },
 
+  /**
+   * CHECK AND AUTO-INCREMENT ROUNDS
+   * Only works if room is IN_PROGRESS (which requires admin START API call)
+   * Checks if round time has been exceeded and auto-advances if so
+   */
   async checkAndAutoIncrementRounds(roomId: number) {
     const room = await db.query.rooms.findFirst({
       where: eq(rooms.id, roomId),
     });
 
+    // CRITICAL: Only auto-increment if room is actively IN_PROGRESS
     if (!room || room.status !== "IN_PROGRESS") {
-      return { updated: false, message: "Room not in progress" };
+      return { updated: false, message: "Room not in progress. Auto-increment disabled." };
     }
 
     if (!room.roundStartedAt) {
