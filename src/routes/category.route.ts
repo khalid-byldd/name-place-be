@@ -25,7 +25,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Get all categories
@@ -50,7 +50,7 @@ router.get(
   "/:categoryId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const categoryId = parseInt(req.params.categoryId);
+      const categoryId = parseInt(req.params.categoryId as string);
 
       if (isNaN(categoryId)) {
         return res.status(400).json({ message: "Invalid category ID" });
@@ -61,7 +61,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Update category (admin only)
@@ -70,14 +70,16 @@ router.put(
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const categoryId = parseInt(req.params.categoryId);
+      const categoryId = parseInt(req.params.categoryId as string);
       const { name } = req.body;
 
       if (isNaN(categoryId)) {
         return res.status(400).json({ message: "Invalid category ID" });
       }
 
-      const updated = await categoryService.updateCategory(categoryId, { name });
+      const updated = await categoryService.updateCategory(categoryId, {
+        name,
+      });
 
       res.json({
         message: "Category updated successfully",
@@ -86,7 +88,7 @@ router.put(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Delete category (admin only)
@@ -95,7 +97,7 @@ router.delete(
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const categoryId = parseInt(req.params.categoryId);
+      const categoryId = parseInt(req.params.categoryId as string);
 
       if (isNaN(categoryId)) {
         return res.status(400).json({ message: "Invalid category ID" });
@@ -106,7 +108,7 @@ router.delete(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;
