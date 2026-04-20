@@ -10,11 +10,12 @@
 
 1. [Health](#health)
 2. [Auth](#auth)
-3. [Players](#players)
-4. [Rooms](#rooms)
-5. [Rounds](#rounds)
-6. [Dashboard](#dashboard)
-7. [WebSocket Events](#websocket-events)
+3. [Categories](#categories)
+4. [Players](#players)
+5. [Rooms](#rooms)
+6. [Rounds](#rounds)
+7. [Dashboard](#dashboard)
+8. [WebSocket Events](#websocket-events)
 
 ---
 
@@ -107,6 +108,197 @@
 {
   "status": 404,
   "message": "User not found"
+}
+```
+
+---
+
+## Categories
+
+### Create Category
+
+**Endpoint:** `POST /categories`
+
+**Authentication:** Required (Bearer token)
+
+**Authorization:** Admin only
+
+**Description:** Create a new game category
+
+**Body:**
+```json
+{
+  "name": "Movies"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Category created successfully",
+  "category": {
+    "id": 1,
+    "name": "Movies",
+    "createdAt": "2026-04-21T10:30:00Z"
+  }
+}
+```
+
+**Errors:**
+```json
+// Category name required
+{
+  "status": 400,
+  "message": "Category name is required"
+}
+
+// Category already exists
+{
+  "status": 400,
+  "message": "Category with this name already exists"
+}
+```
+
+---
+
+### Get All Categories
+
+**Endpoint:** `GET /categories`
+
+**Authentication:** None
+
+**Query Parameters:**
+- `limit` (optional): Max results (default: 100)
+- `offset` (optional): Offset for pagination (default: 0)
+
+**Response (200 OK):**
+```json
+{
+  "categories": [
+    {
+      "id": 1,
+      "name": "Movies",
+      "createdAt": "2026-04-21T10:30:00Z",
+      "updatedAt": "2026-04-21T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Sports",
+      "createdAt": "2026-04-21T10:31:00Z",
+      "updatedAt": "2026-04-21T10:31:00Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+---
+
+### Get Category
+
+**Endpoint:** `GET /categories/:categoryId`
+
+**Authentication:** None
+
+**Parameters:**
+- `categoryId` (path): Category ID (integer)
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "name": "Movies",
+  "createdAt": "2026-04-21T10:30:00Z",
+  "updatedAt": "2026-04-21T10:30:00Z"
+}
+```
+
+**Errors:**
+```json
+{
+  "status": 404,
+  "message": "Category not found"
+}
+```
+
+---
+
+### Update Category
+
+**Endpoint:** `PUT /categories/:categoryId`
+
+**Authentication:** Required (Bearer token)
+
+**Authorization:** Admin only
+
+**Parameters:**
+- `categoryId` (path): Category ID (integer)
+
+**Body:**
+```json
+{
+  "name": "Hollywood Movies"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Category updated successfully",
+  "category": {
+    "id": 1,
+    "name": "Hollywood Movies",
+    "updatedAt": "2026-04-21T10:40:00Z"
+  }
+}
+```
+
+**Errors:**
+```json
+// Category not found
+{
+  "status": 404,
+  "message": "Category not found"
+}
+
+// Empty name
+{
+  "status": 400,
+  "message": "Category name cannot be empty"
+}
+
+// Duplicate name
+{
+  "status": 400,
+  "message": "Category with this name already exists"
+}
+```
+
+---
+
+### Delete Category
+
+**Endpoint:** `DELETE /categories/:categoryId`
+
+**Authentication:** Required (Bearer token)
+
+**Authorization:** Admin only
+
+**Parameters:**
+- `categoryId` (path): Category ID (integer)
+
+**Response (200 OK):**
+```json
+{
+  "message": "Category deleted successfully"
+}
+```
+
+**Errors:**
+```json
+{
+  "status": 404,
+  "message": "Category not found"
 }
 ```
 
@@ -1222,4 +1414,9 @@ Authorization: Bearer MTo0ZGdtQGV4YW1wbGUuY29t
 
 ---
 
-**Last Updated:** April 20, 2026
+**Last Updated:** April 21, 2026
+
+**Latest Changes:**
+- Added Categories CRUD API (Create, Read, Update, Delete)
+- Categories support pagination
+- Admin-only create/update/delete operations
