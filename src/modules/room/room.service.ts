@@ -275,6 +275,49 @@ export const roomService = {
     }));
   },
 
+  async startRoom(roomId: number) {
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
+    });
+
+    if (!room) {
+      throw { status: 404, message: "Room not found" };
+    }
+
+    if (room.status !== "WAITING") {
+      throw { status: 400, message: "Room can only be started from WAITING status" };
+    }
+
+    const updatedRoom = await db
+      .update(rooms)
+      .set({
+        status: "IN_PROGRESS",
+        currentRound: 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(rooms.id, roomId))
+      .returning();
+
+    // Broadcast room start to all connected clients
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "ROOM_STARTED",
+      payload: {
+        roomId: updatedRoom[0].id,
+        status: updatedRoom[0].status,
+        currentRound: updatedRoom[0].currentRound,
+        roundCount: updatedRoom[0].roundCount,
+        timestamp: new Date(),
+      },
+    });
+
+    return {
+      roomId: updatedRoom[0].id,
+      status: updatedRoom[0].status,
+      currentRound: updatedRoom[0].currentRound,
+      message: "Room started successfully",
+    };
+  },
+
   async incrementCurrentRound(roomId: number) {
     const room = await db.query.rooms.findFirst({
       where: eq(rooms.id, roomId),
