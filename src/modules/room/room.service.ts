@@ -122,6 +122,7 @@ export const roomService = {
       roundCount: room.roundCount,
       roundTime: room.roundTime,
       currentRound: room.currentRound,
+      roundStartedAt: room.roundStartedAt,
       categoryIds: categoryIds,
       status: room.status,
       playerCount: playersInRoom.length,
@@ -247,6 +248,7 @@ export const roomService = {
           roundCount: room.roundCount,
           roundTime: room.roundTime,
           currentRound: room.currentRound,
+          roundStartedAt: room.roundStartedAt,
           status: room.status,
           playerCount,
           createdAt: room.createdAt,
@@ -320,17 +322,43 @@ export const roomService = {
       status: updatedRoom[0].status,
       currentRound: updatedRoom[0].currentRound,
       roundStartedAt: updatedRoom[0].roundStartedAt,
+      roundTime: updatedRoom[0].roundTime,
+      roundCount: updatedRoom[0].roundCount,
       message: "Room started successfully",
     };
   },
 
-  async incrementCurrentRound(roomId: number) {
+  async incrementCurrentRound(roomId: number, validateTime: boolean = true) {
     const room = await db.query.rooms.findFirst({
       where: eq(rooms.id, roomId),
     });
 
     if (!room) {
       throw { status: 404, message: "Room not found" };
+    }
+
+    if (room.status !== "IN_PROGRESS") {
+      throw { status: 400, message: "Room is not in progress" };
+    }
+
+    if (!room.roundStartedAt) {
+      throw { status: 400, message: "Round has not started" };
+    }
+
+    // Validate that round time has actually elapsed (prevent client cheating)
+    if (validateTime) {
+      const now = new Date();
+      const elapsedSeconds = (now.getTime() - room.roundStartedAt.getTime()) / 1000;
+
+      // Allow 5% tolerance for network latency, but reject if significantly early
+      const minimumElapsedTime = room.roundTime * 0.95;
+
+      if (elapsedSeconds < minimumElapsedTime) {
+        throw {
+          status: 400,
+          message: `Round time not yet elapsed. Required: ${minimumElapsedTime}s, Elapsed: ${elapsedSeconds.toFixed(2)}s`,
+        };
+      }
     }
 
     const newCurrentRound = room.currentRound + 1;
@@ -355,6 +383,7 @@ export const roomService = {
         currentRound: updatedRoom[0].currentRound,
         roundCount: updatedRoom[0].roundCount,
         roundStartedAt: updatedRoom[0].roundStartedAt,
+        roundTime: updatedRoom[0].roundTime,
         status: updatedRoom[0].status,
         isFinished: isLastRound,
         timestamp: now,
@@ -365,6 +394,8 @@ export const roomService = {
       roomId: updatedRoom[0].id,
       currentRound: updatedRoom[0].currentRound,
       roundCount: updatedRoom[0].roundCount,
+      roundStartedAt: updatedRoom[0].roundStartedAt,
+      roundTime: updatedRoom[0].roundTime,
       status: updatedRoom[0].status,
       isFinished: isLastRound,
     };
