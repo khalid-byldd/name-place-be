@@ -3,6 +3,7 @@ import { WSMessage } from "../types/ws";
 import { logger } from "../utils/logger";
 import { roomWsManager } from "../modules/room/room.ws";
 import { playerService } from "../modules/player/player.service";
+import { roomService } from "../modules/room/room.service";
 
 interface ExtendedSocket extends WebSocket {
   roomId?: number;
@@ -112,6 +113,50 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Failed to update player",
+                  })
+                );
+              }
+            }
+          }
+          break;
+
+        case "ROUND_OVER":
+          {
+            const roomId = socket.roomId;
+            if (roomId) {
+              try {
+                const result = await roomService.incrementCurrentRound(roomId);
+
+                roomWsManager.broadcastToRoom(roomId, {
+                  type: "ROUND_COMPLETED",
+                  payload: {
+                    currentRound: result.currentRound,
+                    roundCount: result.roundCount,
+                    status: result.status,
+                    isFinished: result.isFinished,
+                    timestamp: new Date(),
+                  },
+                });
+
+                // If all rounds are completed, close the room
+                if (result.isFinished) {
+                  setTimeout(() => {
+                    roomWsManager.broadcastToRoom(roomId, {
+                      type: "ROOM_FINISHED",
+                      payload: {
+                        roomId,
+                        message: "All rounds completed. Room is now closed.",
+                        timestamp: new Date(),
+                      },
+                    });
+                  }, 1000);
+                }
+              } catch (err) {
+                logger.error(`Error incrementing round: ${err}`);
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: "Failed to process round completion",
                   })
                 );
               }
