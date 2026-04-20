@@ -1,57 +1,69 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { roomService } from "../modules/room/room.service";
 import { roomWsManager } from "../modules/room/room.ws";
-import { requireAdmin } from "../middleware";
+import { authenticate, requireAdmin } from "../middleware";
 
 const router = Router();
 
 // Create a new room
-router.post("/", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { name, roundCount, roundTime, categoryIds } = req.body;
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, roundCount, roundTime, categoryIds } = req.body;
 
-    if (!name || roundCount === undefined || roundTime === undefined) {
-      return res.status(400).json({
-        message: "Name, roundCount, and roundTime are required",
+      if (!name || roundCount === undefined || roundTime === undefined) {
+        return res.status(400).json({
+          message: "Name, roundCount, and roundTime are required",
+        });
+      }
+
+      const room = await roomService.createRoom({
+        name,
+        roundCount,
+        roundTime,
+        categoryIds: categoryIds || undefined,
       });
+
+      res.status(201).json({
+        message: "Room created successfully",
+        room,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const room = await roomService.createRoom({
-      name,
-      roundCount,
-      roundTime,
-      categoryIds: categoryIds || undefined,
-    });
-
-    res.status(201).json({
-      message: "Room created successfully",
-      room,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Get all rooms
-router.get("/", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const limit = parseInt((req.query.limit as string) || "50");
-    const offset = parseInt((req.query.offset as string) || "0");
+router.get(
+  "/",
+  authenticate,
+  requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const limit = parseInt((req.query.limit as string) || "50");
+      const offset = parseInt((req.query.offset as string) || "0");
 
-    const rooms = await roomService.getAllRooms(limit, offset);
+      const rooms = await roomService.getAllRooms(limit, offset);
 
-    res.json({
-      rooms,
-      count: rooms.length,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+      res.json({
+        rooms,
+        count: rooms.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // Get room details by ID
 router.get(
   "/:roomId",
+  authenticate,
+  requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roomId = parseInt(req.params.roomId as string);
@@ -106,6 +118,8 @@ router.get(
 // Get all rounds for a room
 router.get(
   "/:roomId/rounds",
+  authenticate,
+  requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roomId = parseInt(req.params.roomId as string);
@@ -129,10 +143,11 @@ router.get(
 // Start room (admin only)
 router.post(
   "/:roomId/start",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -144,16 +159,17 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Broadcast admin message to room (admin only, room must be IN_PROGRESS)
 router.post(
   "/:roomId/broadcast-message",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
       const { message } = req.body;
 
       if (isNaN(roomId)) {
@@ -170,7 +186,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Check and auto-increment round if time exceeded
@@ -178,7 +194,7 @@ router.post(
   "/:roomId/check-round-time",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -190,12 +206,13 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Update room settings (admin only)
 router.put(
   "/:roomId",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -226,6 +243,7 @@ router.put(
 // Close/delete room (admin only)
 router.delete(
   "/:roomId",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {

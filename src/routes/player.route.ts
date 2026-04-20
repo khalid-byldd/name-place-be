@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { playerService } from "../modules/player/player.service";
 import { roomService } from "../modules/room/room.service";
-import { requireAdmin } from "../middleware";
+import { authenticate, requireAdmin } from "../middleware";
 
 const router = Router();
 
@@ -131,6 +131,8 @@ router.post(
 // Delete player
 router.delete(
   "/:playerId",
+  authenticate,
+  requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const playerId = parseInt(req.params.playerId as string);
@@ -150,6 +152,7 @@ router.delete(
 // Ban player (admin only)
 router.post(
   "/:playerId/ban",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
