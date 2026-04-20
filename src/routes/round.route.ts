@@ -4,27 +4,30 @@ import { roundService } from "../modules/round/round.service";
 const router = Router();
 
 // Get round details
-router.get("/:roundId", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const roundId = parseInt(req.params.roundId);
+router.get(
+  "/:roundId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roundId = parseInt(req.params.roundId as string);
 
-    if (isNaN(roundId)) {
-      return res.status(400).json({ message: "Invalid round ID" });
+      if (isNaN(roundId)) {
+        return res.status(400).json({ message: "Invalid round ID" });
+      }
+
+      const round = await roundService.getRoundById(roundId);
+      res.json(round);
+    } catch (error) {
+      next(error);
     }
-
-    const round = await roundService.getRoundById(roundId);
-    res.json(round);
-  } catch (error) {
-    next(error);
-  }
-});
+  },
+);
 
 // Submit answers for a round
 router.post(
   "/:roundId/submit-answers",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roundId = parseInt(req.params.roundId);
+      const roundId = parseInt(req.params.roundId as string);
       const { playerId, answers } = req.body;
 
       if (isNaN(roundId)) {
@@ -54,7 +57,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Get round answers
@@ -62,7 +65,7 @@ router.get(
   "/:roundId/answers",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roundId = parseInt(req.params.roundId);
+      const roundId = parseInt(req.params.roundId as string);
 
       if (isNaN(roundId)) {
         return res.status(400).json({ message: "Invalid round ID" });
@@ -76,7 +79,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 // Get all rounds in a room
@@ -84,7 +87,7 @@ router.get(
   "/room/:roomId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
+      const roomId = parseInt(req.params.roomId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -99,7 +102,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;
