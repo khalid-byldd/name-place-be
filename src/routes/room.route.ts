@@ -141,6 +141,32 @@ router.post(
   }
 );
 
+// Broadcast admin message to room (admin only, room must be IN_PROGRESS)
+router.post(
+  "/:roomId/broadcast-message",
+  requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+      const { message } = req.body;
+
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      const result = await roomService.broadcastAdminMessage(roomId, message);
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Check and auto-increment round if time exceeded
 router.post(
   "/:roomId/check-round-time",

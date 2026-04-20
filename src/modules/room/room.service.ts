@@ -409,6 +409,50 @@ export const roomService = {
   },
 
   /**
+   * BROADCAST ADMIN MESSAGE (Admin Only)
+   * Sends a message to all players in a room (only if room is IN_PROGRESS)
+   */
+  async broadcastAdminMessage(roomId: number, message: string) {
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
+    });
+
+    if (!room) {
+      throw { status: 404, message: "Room not found" };
+    }
+
+    // CRITICAL: Only allow broadcasting if room is IN_PROGRESS
+    if (room.status !== "IN_PROGRESS") {
+      throw {
+        status: 400,
+        message: `Cannot broadcast message. Room status is ${room.status}. Room must be IN_PROGRESS.`,
+      };
+    }
+
+    if (!message || message.trim().length === 0) {
+      throw { status: 400, message: "Message cannot be empty" };
+    }
+
+    const trimmedMessage = message.trim();
+
+    // Broadcast admin message to all players in room
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "ADMIN_MESSAGE",
+      payload: {
+        roomId,
+        message: trimmedMessage,
+        timestamp: new Date(),
+      },
+    });
+
+    return {
+      message: "Message broadcasted successfully",
+      roomId,
+      broadcastedMessage: trimmedMessage,
+    };
+  },
+
+  /**
    * CHECK AND AUTO-INCREMENT ROUNDS
    * Only works if room is IN_PROGRESS (which requires admin START API call)
    * Checks if round time has been exceeded and auto-advances if so
