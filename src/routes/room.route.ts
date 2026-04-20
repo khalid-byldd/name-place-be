@@ -147,6 +147,26 @@ router.post(
   }
 );
 
+// Check and auto-increment round if time exceeded
+router.post(
+  "/:roomId/check-round-time",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const result = await roomService.checkAndAutoIncrementRounds(roomId);
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Update room settings (admin only)
 router.put(
   "/:roomId",

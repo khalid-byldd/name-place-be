@@ -206,6 +206,32 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
           }
           break;
 
+        case "CHECK_ROUND_TIME":
+          {
+            const roomId = socket.roomId;
+            if (roomId) {
+              try {
+                const result = await roomService.checkAndAutoIncrementRounds(roomId);
+
+                socket.send(
+                  JSON.stringify({
+                    type: "ROUND_TIME_CHECK",
+                    payload: result,
+                  })
+                );
+              } catch (err) {
+                logger.error(`Error checking round time: ${err}`);
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: "Failed to check round time",
+                  })
+                );
+              }
+            }
+          }
+          break;
+
         default:
           socket.send(
             JSON.stringify({

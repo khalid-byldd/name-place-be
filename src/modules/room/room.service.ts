@@ -129,6 +129,7 @@ export const roomService = {
       roundCount: room.roundCount,
       roundTime: room.roundTime,
       currentRound: room.currentRound,
+      roundStartedAt: room.roundStartedAt,
       categoryIds: categoryIds,
       status: room.status,
       playerCount: playersInRoom.length,
@@ -259,6 +260,7 @@ export const roomService = {
           roundCount: room.roundCount,
           roundTime: room.roundTime,
           currentRound: room.currentRound,
+          roundStartedAt: room.roundStartedAt,
           status: room.status,
           playerCount,
           createdAt: room.createdAt,
@@ -297,12 +299,15 @@ export const roomService = {
       throw { status: 400, message: "Room can only be started from WAITING status" };
     }
 
+    const now = new Date();
+
     const updatedRoom = await db
       .update(rooms)
       .set({
         status: "IN_PROGRESS",
         currentRound: 1,
-        updatedAt: new Date(),
+        roundStartedAt: now,
+        updatedAt: now,
       })
       .where(eq(rooms.id, roomId))
       .returning();
@@ -315,7 +320,9 @@ export const roomService = {
         status: updatedRoom[0].status,
         currentRound: updatedRoom[0].currentRound,
         roundCount: updatedRoom[0].roundCount,
-        timestamp: new Date(),
+        roundStartedAt: updatedRoom[0].roundStartedAt,
+        roundTime: updatedRoom[0].roundTime,
+        timestamp: now,
       },
     });
 
@@ -323,11 +330,14 @@ export const roomService = {
       roomId: updatedRoom[0].id,
       status: updatedRoom[0].status,
       currentRound: updatedRoom[0].currentRound,
+      roundStartedAt: updatedRoom[0].roundStartedAt,
+      roundTime: updatedRoom[0].roundTime,
+      roundCount: updatedRoom[0].roundCount,
       message: "Room started successfully",
     };
   },
 
-  async incrementCurrentRound(roomId: number) {
+  async incrementCurrentRound(roomId: number, validateTime: boolean = true) {
     const room = await db.query.rooms.findFirst({
       where: eq(rooms.id, roomId),
     });
@@ -336,25 +346,102 @@ export const roomService = {
       throw { status: 404, message: "Room not found" };
     }
 
+    if (room.status !== "IN_PROGRESS") {
+      throw { status: 400, message: "Room is not in progress" };
+    }
+
+    if (!room.roundStartedAt) {
+      throw { status: 400, message: "Round has not started" };
+    }
+
+    // Validate that round time has actually elapsed (prevent client cheating)
+    if (validateTime) {
+      const now = new Date();
+      const elapsedSeconds = (now.getTime() - room.roundStartedAt.getTime()) / 1000;
+
+      // Allow 5% tolerance for network latency, but reject if significantly early
+      const minimumElapsedTime = room.roundTime * 0.95;
+
+      if (elapsedSeconds < minimumElapsedTime) {
+        throw {
+          status: 400,
+          message: `Round time not yet elapsed. Required: ${minimumElapsedTime}s, Elapsed: ${elapsedSeconds.toFixed(2)}s`,
+        };
+      }
+    }
+
     const newCurrentRound = room.currentRound + 1;
     const isLastRound = newCurrentRound >= room.roundCount;
+    const now = new Date();
 
     const updatedRoom = await db
       .update(rooms)
       .set({
         currentRound: newCurrentRound,
+        roundStartedAt: now,
         status: isLastRound ? "FINISHED" : room.status,
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(rooms.id, roomId))
       .returning();
+
+    // Broadcast round change to all connected clients
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "ROUND_CHANGED",
+      payload: {
+        currentRound: updatedRoom[0].currentRound,
+        roundCount: updatedRoom[0].roundCount,
+        roundStartedAt: updatedRoom[0].roundStartedAt,
+        roundTime: updatedRoom[0].roundTime,
+        status: updatedRoom[0].status,
+        isFinished: isLastRound,
+        timestamp: now,
+      },
+    });
 
     return {
       roomId: updatedRoom[0].id,
       currentRound: updatedRoom[0].currentRound,
       roundCount: updatedRoom[0].roundCount,
+      roundStartedAt: updatedRoom[0].roundStartedAt,
+      roundTime: updatedRoom[0].roundTime,
       status: updatedRoom[0].status,
       isFinished: isLastRound,
+    };
+  },
+
+  async checkAndAutoIncrementRounds(roomId: number) {
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
+    });
+
+    if (!room || room.status !== "IN_PROGRESS") {
+      return { updated: false, message: "Room not in progress" };
+    }
+
+    if (!room.roundStartedAt) {
+      return { updated: false, message: "Round not started yet" };
+    }
+
+    const now = new Date();
+    const elapsedSeconds = (now.getTime() - room.roundStartedAt.getTime()) / 1000;
+
+    // Check if round time exceeded (roundTime is in seconds, max 90)
+    if (elapsedSeconds >= room.roundTime) {
+      const result = await this.incrementCurrentRound(roomId);
+      return {
+        updated: true,
+        message: `Round time exceeded. Moved to round ${result.currentRound}`,
+        data: result,
+      };
+    }
+
+    const timeRemaining = Math.ceil(room.roundTime - elapsedSeconds);
+    return {
+      updated: false,
+      message: `Round in progress. Time remaining: ${timeRemaining}s`,
+      timeRemaining,
+      currentRound: room.currentRound,
     };
   },
 };

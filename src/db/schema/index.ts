@@ -44,6 +44,7 @@ export const rooms = pgTable("rooms", {
   roundTime: integer("round_time").notNull(),
 
   currentRound: integer("current_round").default(0).notNull(),
+  roundStartedAt: timestamp("round_started_at"),
 
   categoryIds: text("category_ids").notNull(),
 
