@@ -25,7 +25,10 @@ const generateRandomLetter = (): string => {
   return letters[Math.floor(Math.random() * letters.length)];
 };
 
-const selectRandomCategories = (allCategories: any[], count: number = 4): string => {
+const selectRandomCategories = (
+  allCategories: any[],
+  count: number = 4,
+): string => {
   if (allCategories.length === 0) {
     return "";
   }
@@ -103,10 +106,6 @@ export const roomService = {
       where: eq(players.roomId, roomId),
     });
 
-    const roomRounds = await db.query.rounds.findMany({
-      where: eq(rounds.roomId, roomId),
-    });
-
     return {
       id: room.id,
       name: room.name,
@@ -115,7 +114,6 @@ export const roomService = {
       roundTime: room.roundTime,
       status: room.status,
       playerCount: playersInRoom.length,
-      roundsCount: roomRounds.length,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };
@@ -163,7 +161,11 @@ export const roomService = {
       roomWsManager.updateRoomStatus(roomId, input.status);
     }
 
-    if (input.name !== undefined || input.roundCount !== undefined || input.roundTime !== undefined) {
+    if (
+      input.name !== undefined ||
+      input.roundCount !== undefined ||
+      input.roundTime !== undefined
+    ) {
       roomWsManager.broadcastToRoom(roomId, {
         type: "ROOM_SETTINGS_CHANGED",
         payload: {
@@ -258,10 +260,7 @@ export const roomService = {
       roomId: r.roomId,
       roundNumber: r.roundNumber,
       letter: r.letter,
-      categoryIds: r.categoryIds.split(",").map((id) => parseInt(id)),
-      timeTaken: r.timeTaken,
-      score: r.score,
-      playerId: r.playerId,
+      categoryIds: r.categoryIds?.split(",").map((id) => parseInt(id)),
       createdAt: r.createdAt,
     }));
   },
