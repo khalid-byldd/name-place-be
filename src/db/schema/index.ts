@@ -43,6 +43,8 @@ export const rooms = pgTable("rooms", {
   roundCount: integer("round_count").notNull(),
   roundTime: integer("round_time").notNull(),
 
+  currentRound: integer("current_round").default(0).notNull(),
+
   categoryIds: text("category_ids").notNull(),
 
   status: roomStatusEnum("status").default("WAITING"),

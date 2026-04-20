@@ -128,6 +128,7 @@ export const roomService = {
       code: room.code,
       roundCount: room.roundCount,
       roundTime: room.roundTime,
+      currentRound: room.currentRound,
       categoryIds: categoryIds,
       status: room.status,
       playerCount: playersInRoom.length,
@@ -257,6 +258,7 @@ export const roomService = {
           code: room.code,
           roundCount: room.roundCount,
           roundTime: room.roundTime,
+          currentRound: room.currentRound,
           status: room.status,
           playerCount,
           createdAt: room.createdAt,
@@ -280,5 +282,36 @@ export const roomService = {
       categoryIds: r.categoryIds?.split(",").map((id) => parseInt(id)),
       createdAt: r.createdAt,
     }));
+  },
+
+  async incrementCurrentRound(roomId: number) {
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
+    });
+
+    if (!room) {
+      throw { status: 404, message: "Room not found" };
+    }
+
+    const newCurrentRound = room.currentRound + 1;
+    const isLastRound = newCurrentRound >= room.roundCount;
+
+    const updatedRoom = await db
+      .update(rooms)
+      .set({
+        currentRound: newCurrentRound,
+        status: isLastRound ? "FINISHED" : room.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(rooms.id, roomId))
+      .returning();
+
+    return {
+      roomId: updatedRoom[0].id,
+      currentRound: updatedRoom[0].currentRound,
+      roundCount: updatedRoom[0].roundCount,
+      status: updatedRoom[0].status,
+      isFinished: isLastRound,
+    };
   },
 };
