@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { players, bannedPlayers } from "../../db/schema";
+import { players, bannedPlayers, rooms } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { roomWsManager } from "../room/room.ws";
 
@@ -121,15 +121,35 @@ export const playerService = {
       throw { status: 403, message: "Player is banned" };
     }
 
+    // Check room exists and status is WAITING or IN_PROGRESS
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
+    });
+
+    if (!room) {
+      throw { status: 404, message: "Room not found" };
+    }
+
+    if (room.status !== "WAITING" && room.status !== "IN_PROGRESS") {
+      throw {
+        status: 400,
+        message: `Cannot join room with status ${room.status}. Room must be WAITING or IN_PROGRESS`,
+      };
+    }
+
+    const wasAlreadyInRoom = player.roomId === roomId;
+
     const updated = await db
       .update(players)
       .set({ roomId, updatedAt: new Date() })
       .where(eq(players.id, playerId))
       .returning();
 
-    // Broadcast to WebSocket room that player joined via API
+    // Broadcast to WebSocket room that player joined or rejoined
+    const eventType = wasAlreadyInRoom ? "PLAYER_REJOINED_ROOM" : "PLAYER_JOINED_ROOM";
+
     roomWsManager.broadcastToRoom(roomId, {
-      type: "PLAYER_JOINED_ROOM",
+      type: eventType,
       payload: {
         playerId: updated[0].id,
         playerName: updated[0].name,
@@ -157,6 +177,10 @@ export const playerService = {
 
     const roomId = player.roomId;
 
+    if (!roomId) {
+      throw { status: 400, message: "Player is not in any room" };
+    }
+
     const updated = await db
       .update(players)
       .set({ roomId: null, updatedAt: new Date() })
@@ -164,23 +188,22 @@ export const playerService = {
       .returning();
 
     // Broadcast to WebSocket room that player left via API
-    if (roomId) {
-      roomWsManager.broadcastToRoom(roomId, {
-        type: "PLAYER_LEFT_ROOM",
-        payload: {
-          playerId: updated[0].id,
-          playerName: updated[0].name,
-          leftVia: "api",
-          timestamp: new Date(),
-        },
-      });
-    }
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "PLAYER_LEFT_ROOM",
+      payload: {
+        playerId: updated[0].id,
+        playerName: player.name,
+        leftVia: "api",
+        timestamp: new Date(),
+      },
+    });
 
     return {
       id: updated[0].id,
       name: updated[0].name,
       roomId: updated[0].roomId,
       status: updated[0].status,
+      message: "Left room successfully",
     };
   },
 

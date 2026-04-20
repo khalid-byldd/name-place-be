@@ -4,6 +4,9 @@ import { logger } from "../utils/logger";
 import { roomWsManager } from "../modules/room/room.ws";
 import { playerService } from "../modules/player/player.service";
 import { roomService } from "../modules/room/room.service";
+import { db } from "../db/client";
+import { rooms } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 interface ExtendedSocket extends WebSocket {
   roomId?: number;
@@ -36,17 +39,56 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
         case "ROOM_JOIN":
           {
             const { roomId, playerId, playerName } = message.payload;
-            socket.roomId = roomId;
-            socket.playerId = playerId;
-            await roomWsManager.joinRoom(socket, roomId, playerId, playerName);
+
+            try {
+              // Check room status before allowing join
+              const room = await db.query.rooms.findFirst({
+                where: eq(rooms.id, roomId),
+              });
+
+              if (!room) {
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: "Room not found",
+                  })
+                );
+                break;
+              }
+
+              if (room.status !== "WAITING" && room.status !== "IN_PROGRESS") {
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: `Cannot join room with status ${room.status}`,
+                  })
+                );
+                break;
+              }
+
+              socket.roomId = roomId;
+              socket.playerId = playerId;
+              await roomWsManager.joinRoom(socket, roomId, playerId, playerName);
+            } catch (err) {
+              logger.error(`Error joining room: ${err}`);
+              socket.send(
+                JSON.stringify({
+                  type: "ERROR",
+                  payload: "Failed to join room",
+                })
+              );
+            }
           }
           break;
 
         case "ROOM_LEAVE":
           {
             const roomId = socket.roomId;
-            if (roomId) {
+            const playerId = socket.playerId;
+            if (roomId && playerId) {
               roomWsManager.leaveRoom(socket, roomId);
+              socket.roomId = undefined;
+              socket.playerId = undefined;
             }
           }
           break;
