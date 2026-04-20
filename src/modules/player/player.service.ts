@@ -221,6 +221,14 @@ export const playerService = {
     return { message: "Player deleted successfully" };
   },
 
+  /**
+   * BAN PLAYER (Admin Only via API)
+   * When a player is banned:
+   * 1. Added to bannedPlayers table
+   * 2. Disconnected from all WebSocket connections
+   * 3. Broadcast PLAYER_BANNED event to their room
+   * 4. Cannot join any room (checked in both HTTP API and WebSocket)
+   */
   async banPlayer(playerId: number, reason?: string) {
     const player = await db.query.players.findFirst({
       where: eq(players.id, playerId),
@@ -230,6 +238,7 @@ export const playerService = {
       throw { status: 404, message: "Player not found" };
     }
 
+    // Add to banned players table
     await db
       .insert(bannedPlayers)
       .values({
@@ -238,7 +247,7 @@ export const playerService = {
       })
       .returning();
 
-    // Disconnect player from websocket
+    // Immediately disconnect player from WebSocket
     roomWsManager.disconnectPlayer(playerId, "Player has been banned");
 
     // Notify room if player is in one
@@ -254,7 +263,11 @@ export const playerService = {
       });
     }
 
-    return { message: "Player banned successfully" };
+    return {
+      message: "Player banned successfully",
+      playerId,
+      reason: reason || "No reason provided",
+    };
   },
 
   async getPlayersByRoom(roomId: number) {

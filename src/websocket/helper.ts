@@ -5,7 +5,7 @@ import { roomWsManager } from "../modules/room/room.ws";
 import { playerService } from "../modules/player/player.service";
 import { roomService } from "../modules/room/room.service";
 import { db } from "../db/client";
-import { rooms } from "../db/schema";
+import { rooms, bannedPlayers } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 interface ExtendedSocket extends WebSocket {
@@ -41,6 +41,21 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
             const { roomId, playerId, playerName } = message.payload;
 
             try {
+              // SECURITY: Check if player is banned (prevents joining rooms)
+              const isBanned = await db.query.bannedPlayers.findFirst({
+                where: eq(bannedPlayers.playerId, playerId),
+              });
+
+              if (isBanned) {
+                socket.send(
+                  JSON.stringify({
+                    type: "ERROR",
+                    payload: "Player is banned and cannot join any room",
+                  })
+                );
+                break;
+              }
+
               // Check room status before allowing join
               const room = await db.query.rooms.findFirst({
                 where: eq(rooms.id, roomId),
