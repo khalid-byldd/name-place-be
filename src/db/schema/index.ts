@@ -110,6 +110,10 @@ export const roundAnswers = pgTable("round_answers", {
     onDelete: "cascade",
   }),
 
+  playerId: integer("player_id").references(() => players.id, {
+    onDelete: "cascade",
+  }),
+
   timeTaken: integer("time_taken"),
 
   score: integer("score"),

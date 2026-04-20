@@ -6,6 +6,8 @@ export interface SubmitAnswersInput {
   playerId: number;
   roundId: number;
   answers: string[];
+  timeTaken: number; // Time taken in seconds
+  score: number; // Score for the submitted answers
 }
 
 export interface CreateRoundInput {
@@ -15,7 +17,11 @@ export interface CreateRoundInput {
 }
 
 export const roundService = {
-  async createRoundsForRoom(roomId: number, roundCount: number, categoryIds: number[]) {
+  async createRoundsForRoom(
+    roomId: number,
+    roundCount: number,
+    categoryIds: number[],
+  ) {
     const createdRounds = [];
 
     for (let i = 1; i <= roundCount; i++) {
@@ -25,22 +31,11 @@ export const roundService = {
           roomId,
           roundNumber: i,
           letter: this.getRandomLetter(),
+          categoryIds: categoryIds.join(","), // Store category IDs as a comma-separated string
         })
         .returning();
 
       createdRounds.push(newRound[0]);
-
-      // Create round answers for each category
-      for (const categoryId of categoryIds) {
-        await db
-          .insert(roundAnswers)
-          .values({
-            roundId: newRound[0].id,
-            categoryId,
-            answer: null,
-          })
-          .returning();
-      }
     }
 
     return createdRounds;
@@ -55,19 +50,12 @@ export const roundService = {
       throw { status: 404, message: "Round not found" };
     }
 
-    const answers = await db.query.roundAnswers.findMany({
-      where: eq(roundAnswers.roundId, roundId),
-    });
-
     return {
       id: round.id,
       roomId: round.roomId,
-      playerId: round.playerId,
       roundNumber: round.roundNumber,
       letter: round.letter,
-      timeTaken: round.timeTaken,
-      score: round.score,
-      answers,
+      categoryIds: round.categoryIds,
       createdAt: round.createdAt,
     };
   },
@@ -90,47 +78,36 @@ export const roundService = {
     }
 
     // Get all round answers for this round
-    const existingAnswers = await db.query.roundAnswers.findMany({
+    const existingAnswers = await db.query.roundAnswers.findFirst({
       where: eq(roundAnswers.roundId, input.roundId),
     });
 
-    if (existingAnswers.length !== input.answers.length) {
+    if (existingAnswers) {
       throw {
         status: 400,
-        message: `Expected ${existingAnswers.length} answers, got ${input.answers.length}`,
+        message: `Already submitted answers for round ${input.roundId} by player ${input.playerId}`,
       };
     }
 
     // Update each round answer with the player's answer
-    const answersWithComma = input.answers.map((answer) => answer.trim()).join(",");
+    const answersWithComma = input.answers
+      .map((answer) => answer.trim())
+      .join(",");
 
-    const updatedAnswers = [];
-    for (let i = 0; i < existingAnswers.length; i++) {
-      const updated = await db
-        .update(roundAnswers)
-        .set({
-          answer: input.answers[i] ? input.answers[i].trim() : null,
-        })
-        .where(eq(roundAnswers.id, existingAnswers[i].id))
-        .returning();
-
-      updatedAnswers.push(updated[0]);
-    }
-
-    // Update round with player info if not already set
-    if (!round.playerId) {
-      await db
-        .update(rounds)
-        .set({ playerId: input.playerId })
-        .where(eq(rounds.id, input.roundId))
-        .returning();
-    }
+    const newAnswer = await db
+      .insert(roundAnswers)
+      .values({
+        roundId: input.roundId,
+        playerId: input.playerId,
+        answers: answersWithComma,
+        timeTaken: input.timeTaken,
+        score: input.score,
+      })
+      .returning();
 
     return {
       roundId: input.roundId,
       playerId: input.playerId,
-      answers: updatedAnswers,
-      submittedAt: new Date(),
     };
   },
 

@@ -28,7 +28,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roundId = parseInt(req.params.roundId as string);
-      const { playerId, answers } = req.body;
+      const { playerId, answers, score, timeTaken } = req.body;
 
       if (isNaN(roundId)) {
         return res.status(400).json({ message: "Invalid round ID" });
@@ -48,6 +48,8 @@ router.post(
         playerId,
         roundId,
         answers,
+        score,
+        timeTaken,
       });
 
       res.json({
