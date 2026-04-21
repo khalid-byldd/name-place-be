@@ -176,108 +176,76 @@ export const roundService = {
   },
 
   async getRoundsByPlayerInRoom(roomId: number, playerId: number) {
-    // Verify room exists
-    const room = await db.query.rooms.findFirst({
-      where: eq(rooms.id, roomId),
-    });
+    // Verify room exists and player is in room (single query with join)
+    const playerInRoom = await db
+      .select({
+        playerId: players.id,
+        playerName: players.name,
+        playerRoomId: players.roomId,
+      })
+      .from(players)
+      .innerJoin(rooms, eq(rooms.id, players.roomId))
+      .where(and(eq(players.id, playerId), eq(rooms.id, roomId)))
+      .limit(1);
 
-    if (!room) {
-      throw { status: 404, message: "Room not found" };
+    if (playerInRoom.length === 0) {
+      throw { status: 404, message: "Player not found or not in this room" };
     }
 
-    // Verify player exists and is in the room
-    const player = await db.query.players.findFirst({
-      where: eq(players.id, playerId),
-    });
+    const player = playerInRoom[0];
 
-    if (!player) {
-      throw { status: 404, message: "Player not found" };
-    }
-
-    // Get all rounds in room
-    const allRounds = await db
-      .select()
+    // Get all rounds with answers using LEFT JOIN (single query)
+    const roundsData = await db
+      .select({
+        roundId: rounds.id,
+        roomId: rounds.roomId,
+        roundNumber: rounds.roundNumber,
+        letter: rounds.letter,
+        timeTaken: roundAnswers.timeTaken,
+        score: roundAnswers.score,
+        playerId: roundAnswers.playerId,
+        createdAt: rounds.createdAt,
+        answerId: roundAnswers.id,
+        categoryId: rounds.categoryIds,
+        answer: roundAnswers.answers,
+      })
       .from(rounds)
-      .where(eq(rounds.roomId, roomId));
+      .leftJoin(roundAnswers, eq(roundAnswers.roundId, rounds.id))
+      .where(eq(rounds.roomId, roomId))
+      .orderBy(rounds.id);
 
-    // For each round, get the answers
-    const roundsWithAnswers = await Promise.all(
-      allRounds.map(async (round) => {
-        const answers = await db.query.roundAnswers.findMany({
-          where: eq(roundAnswers.roundId, round.id),
+    // Transform flat result into nested structure
+    const roundsMap = new Map();
+    roundsData.forEach((row) => {
+      if (!roundsMap.has(row.roundId)) {
+        roundsMap.set(row.roundId, {
+          id: row.roundId,
+          roomId: row.roomId,
+          roundNumber: row.roundNumber,
+          letter: row.letter,
+          timeTaken: row.timeTaken,
+          score: row.score,
+          playerId: row.playerId,
+          createdAt: row.createdAt,
+          answers: [],
         });
+      }
 
-        return {
-          id: round.id,
-          roomId: round.roomId,
-          roundNumber: round.roundNumber,
-          letter: round.letter,
-          timeTaken: round.timeTaken,
-          score: round.score,
-          playerId: round.playerId,
-          answers: answers.map((ans) => ({
-            id: ans.id,
-            categoryId: ans.categoryId,
-            answer: ans.answer,
-          })),
-          createdAt: round.createdAt,
-        };
-      }),
-    );
+      if (row.answerId) {
+        roundsMap.get(row.roundId).answers.push({
+          id: row.answerId,
+          categoryId: row.categoryId,
+          answer: row.answer,
+        });
+      }
+    });
 
     return {
       roomId,
       playerId,
-      playerName: player.name,
-      totalRounds: roundsWithAnswers.length,
-      rounds: roundsWithAnswers,
-    };
-  },
-
-  async updateRoundMetrics(
-    roundId: number,
-    timeTaken?: number,
-    score?: number,
-  ) {
-    const round = await db.query.rounds.findFirst({
-      where: eq(rounds.id, roundId),
-    });
-
-    if (!round) {
-      throw { status: 404, message: "Round not found" };
-    }
-
-    const updateData: any = {
-      updatedAt: new Date(),
-    };
-
-    if (timeTaken !== undefined) {
-      if (timeTaken < 0) {
-        throw { status: 400, message: "Time taken cannot be negative" };
-      }
-      updateData.timeTaken = timeTaken;
-    }
-
-    if (score !== undefined) {
-      if (score < 0) {
-        throw { status: 400, message: "Score cannot be negative" };
-      }
-      updateData.score = score;
-    }
-
-    const updated = await db
-      .update(rounds)
-      .set(updateData)
-      .where(eq(rounds.id, roundId))
-      .returning();
-
-    return {
-      id: updated[0].id,
-      roundId: updated[0].id,
-      playerId: updated[0].playerId,
-      timeTaken: updated[0].timeTaken,
-      score: updated[0].score,
-      updatedAt: updated[0].updatedAt,
+      playerName: player.playerName,
+      totalRounds: roundsMap.size,
+      rounds: Array.from(roundsMap.values()),
     };
   },
 };
