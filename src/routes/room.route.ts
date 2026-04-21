@@ -48,7 +48,6 @@ router.get(
       const offset = parseInt((req.query.offset as string) || "0");
 
       const rooms = await roomService.getAllRooms(limit, offset);
-
       res.json({
         rooms,
         count: rooms.length,

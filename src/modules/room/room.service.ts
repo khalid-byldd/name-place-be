@@ -245,30 +245,20 @@ export const roomService = {
       orderBy: desc(rooms.createdAt),
     });
 
-    const roomsWithPlayers = await Promise.all(
-      allRooms.map(async (room) => {
-        const playerCount = await db.query.players
-          .findMany({
-            where: eq(players.roomId, room.id),
-          })
-          .then((p) => p.length);
-
-        return {
-          id: room.id,
-          name: room.name,
-          code: room.code,
-          roundCount: room.roundCount,
-          roundTime: room.roundTime,
-          currentRound: room.currentRound,
-          roundStartedAt: room.roundStartedAt,
-          status: room.status,
-          playerCount,
-          createdAt: room.createdAt,
-        };
-      }),
-    );
-
-    return roomsWithPlayers;
+    const data = allRooms.map((room) => {
+      return {
+        id: room.id,
+        name: room.name,
+        code: room.code,
+        roundCount: room.roundCount,
+        roundTime: room.roundTime,
+        currentRound: room.currentRound,
+        roundStartedAt: room.roundStartedAt,
+        status: room.status,
+        createdAt: room.createdAt,
+      };
+    });
+    return data;
   },
 
   async getRoundsByRoom(roomId: number) {
@@ -301,7 +291,10 @@ export const roomService = {
     }
 
     if (room.status !== "WAITING") {
-      throw { status: 400, message: "Room can only be started from WAITING status" };
+      throw {
+        status: 400,
+        message: "Room can only be started from WAITING status",
+      };
     }
 
     const now = new Date();
@@ -354,7 +347,10 @@ export const roomService = {
     // CRITICAL: Room must be IN_PROGRESS to increment rounds
     // Room can ONLY be moved to IN_PROGRESS via admin-only START API
     if (room.status !== "IN_PROGRESS") {
-      throw { status: 400, message: "Room is not in progress. Cannot advance rounds." };
+      throw {
+        status: 400,
+        message: "Room is not in progress. Cannot advance rounds.",
+      };
     }
 
     if (!room.roundStartedAt) {
@@ -364,7 +360,8 @@ export const roomService = {
     // Validate that round time has actually elapsed (prevent client cheating)
     if (validateTime) {
       const now = new Date();
-      const elapsedSeconds = (now.getTime() - room.roundStartedAt.getTime()) / 1000;
+      const elapsedSeconds =
+        (now.getTime() - room.roundStartedAt.getTime()) / 1000;
 
       // Allow 5% tolerance for network latency, but reject if significantly early
       const minimumElapsedTime = room.roundTime * 0.95;
@@ -473,7 +470,10 @@ export const roomService = {
 
     // CRITICAL: Only auto-increment if room is actively IN_PROGRESS
     if (!room || room.status !== "IN_PROGRESS") {
-      return { updated: false, message: "Room not in progress. Auto-increment disabled." };
+      return {
+        updated: false,
+        message: "Room not in progress. Auto-increment disabled.",
+      };
     }
 
     if (!room.roundStartedAt) {
@@ -481,7 +481,8 @@ export const roomService = {
     }
 
     const now = new Date();
-    const elapsedSeconds = (now.getTime() - room.roundStartedAt.getTime()) / 1000;
+    const elapsedSeconds =
+      (now.getTime() - room.roundStartedAt.getTime()) / 1000;
 
     // Check if round time exceeded (roundTime is in seconds, max 90)
     if (elapsedSeconds >= room.roundTime) {
