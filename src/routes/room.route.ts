@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { roomService } from "../modules/room/room.service";
+import { roundService } from "../modules/round/round.service";
 import { roomWsManager } from "../modules/room/room.ws";
 import { requireAdmin } from "../middleware";
 
@@ -135,6 +136,30 @@ router.post(
       const result = await roomService.startRoom(roomId);
 
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Increment room's current round (admin only)
+router.post(
+  "/:roomId/increment-round",
+  requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const roomId = parseInt(req.params.roomId);
+
+      if (isNaN(roomId)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const result = await roundService.incrementRoomRound(roomId);
+
+      res.json({
+        message: "Room round incremented successfully",
+        data: result,
+      });
     } catch (error) {
       next(error);
     }
