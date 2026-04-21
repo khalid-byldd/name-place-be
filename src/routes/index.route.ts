@@ -16,6 +16,6 @@ router.use("/dashboard", authenticate, requireAdmin, dashboardRoute);
 router.use("/rooms", authenticate, requireAdmin, roomRoute);
 router.use("/players", playerRoute);
 router.use("/rounds", roundRoute);
-router.use("/categories", categoryRoute);
+router.use("/categories", authenticate, categoryRoute);
 
 export default router;
