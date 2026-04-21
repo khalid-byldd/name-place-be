@@ -227,36 +227,28 @@ export const roomService = {
   },
 
   async getAllRooms(limit = 50, offset = 0) {
-    const allRooms = await db.query.rooms.findMany({
-      limit,
-      offset,
-      orderBy: desc(rooms.createdAt),
-    });
-
-    const roomsWithPlayers = await Promise.all(
-      allRooms.map(async (room) => {
-        const playerCount = await db.query.players
-          .findMany({
-            where: eq(players.roomId, room.id),
-          })
-          .then((p) => p.length);
-
-        return {
-          id: room.id,
-          name: room.name,
-          code: room.code,
-          roundCount: room.roundCount,
-          roundTime: room.roundTime,
-          currentRound: room.currentRound,
-          roundStartedAt: room.roundStartedAt,
-          status: room.status,
-          playerCount,
-          createdAt: room.createdAt,
-        };
+    // Use SQL JOIN to get rooms with player counts in a single query
+    const allRooms = await db
+      .select({
+        id: rooms.id,
+        name: rooms.name,
+        code: rooms.code,
+        roundCount: rooms.roundCount,
+        roundTime: rooms.roundTime,
+        currentRound: rooms.currentRound,
+        roundStartedAt: rooms.roundStartedAt,
+        status: rooms.status,
+        createdAt: rooms.createdAt,
+        playerCount: db.fn.count(players.id),
       })
-    );
+      .from(rooms)
+      .leftJoin(players, eq(players.roomId, rooms.id))
+      .groupBy(rooms.id)
+      .orderBy(desc(rooms.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    return roomsWithPlayers;
+    return allRooms;
   },
 
   async getRoundsByRoom(roomId: number) {

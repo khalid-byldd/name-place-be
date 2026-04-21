@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { rounds, roundAnswers, players } from "../../db/schema";
+import { rounds, roundAnswers, players, rooms } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface SubmitAnswersInput {
@@ -199,65 +199,76 @@ export const roundService = {
   },
 
   async getRoundsByPlayerInRoom(roomId: number, playerId: number) {
-    // Verify room exists
-    const room = await db.query.rooms.findFirst({
-      where: eq(rooms.id, roomId),
-    });
-
-    if (!room) {
-      throw { status: 404, message: "Room not found" };
-    }
-
-    // Verify player exists and is in the room
-    const player = await db.query.players.findFirst({
-      where: eq(players.id, playerId),
-    });
-
-    if (!player) {
-      throw { status: 404, message: "Player not found" };
-    }
-
-    if (player.roomId !== roomId) {
-      throw { status: 400, message: "Player is not in this room" };
-    }
-
-    // Get all rounds in room
-    const allRounds = await db
-      .select()
-      .from(rounds)
-      .where(eq(rounds.roomId, roomId));
-
-    // For each round, get the answers
-    const roundsWithAnswers = await Promise.all(
-      allRounds.map(async (round) => {
-        const answers = await db.query.roundAnswers.findMany({
-          where: eq(roundAnswers.roundId, round.id),
-        });
-
-        return {
-          id: round.id,
-          roomId: round.roomId,
-          roundNumber: round.roundNumber,
-          letter: round.letter,
-          timeTaken: round.timeTaken,
-          score: round.score,
-          playerId: round.playerId,
-          answers: answers.map((ans) => ({
-            id: ans.id,
-            categoryId: ans.categoryId,
-            answer: ans.answer,
-          })),
-          createdAt: round.createdAt,
-        };
+    // Verify room exists and player is in room (single query with join)
+    const playerInRoom = await db
+      .select({
+        playerId: players.id,
+        playerName: players.name,
+        playerRoomId: players.roomId,
       })
-    );
+      .from(players)
+      .innerJoin(rooms, eq(rooms.id, players.roomId))
+      .where(and(eq(players.id, playerId), eq(rooms.id, roomId)))
+      .limit(1);
+
+    if (playerInRoom.length === 0) {
+      throw { status: 404, message: "Player not found or not in this room" };
+    }
+
+    const player = playerInRoom[0];
+
+    // Get all rounds with answers using LEFT JOIN (single query)
+    const roundsData = await db
+      .select({
+        roundId: rounds.id,
+        roomId: rounds.roomId,
+        roundNumber: rounds.roundNumber,
+        letter: rounds.letter,
+        timeTaken: rounds.timeTaken,
+        score: rounds.score,
+        playerId: rounds.playerId,
+        createdAt: rounds.createdAt,
+        answerId: roundAnswers.id,
+        categoryId: roundAnswers.categoryId,
+        answer: roundAnswers.answer,
+      })
+      .from(rounds)
+      .leftJoin(roundAnswers, eq(roundAnswers.roundId, rounds.id))
+      .where(eq(rounds.roomId, roomId))
+      .orderBy(rounds.id);
+
+    // Transform flat result into nested structure
+    const roundsMap = new Map();
+    roundsData.forEach((row) => {
+      if (!roundsMap.has(row.roundId)) {
+        roundsMap.set(row.roundId, {
+          id: row.roundId,
+          roomId: row.roomId,
+          roundNumber: row.roundNumber,
+          letter: row.letter,
+          timeTaken: row.timeTaken,
+          score: row.score,
+          playerId: row.playerId,
+          createdAt: row.createdAt,
+          answers: [],
+        });
+      }
+
+      if (row.answerId) {
+        roundsMap.get(row.roundId).answers.push({
+          id: row.answerId,
+          categoryId: row.categoryId,
+          answer: row.answer,
+        });
+      }
+    });
 
     return {
       roomId,
       playerId,
-      playerName: player.name,
-      totalRounds: roundsWithAnswers.length,
-      rounds: roundsWithAnswers,
+      playerName: player.playerName,
+      totalRounds: roundsMap.size,
+      rounds: Array.from(roundsMap.values()),
     };
   },
 
