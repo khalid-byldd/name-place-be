@@ -942,6 +942,50 @@
 
 ---
 
+### Increment Room Round
+
+**Endpoint:** `POST /rooms/:roomId/increment-round`
+
+**Authentication:** Required (Bearer token)
+
+**Authorization:** Admin only
+
+**Parameters:**
+- `roomId` (path): Room ID (integer)
+
+**Description:** Increment the current round of a room (with validation that it doesn't exceed roundCount)
+
+**Response (200 OK):**
+```json
+{
+  "message": "Room round incremented successfully",
+  "data": {
+    "roomId": 1,
+    "previousRound": 1,
+    "currentRound": 2,
+    "roundCount": 5,
+    "canIncrement": true
+  }
+}
+```
+
+**Errors:**
+```json
+// Room not found
+{
+  "status": 404,
+  "message": "Room not found"
+}
+
+// Cannot increment (already at max rounds)
+{
+  "status": 400,
+  "message": "Cannot increment. Current round (5) has reached max (5)"
+}
+```
+
+---
+
 ## Rounds
 
 ### Get Round
@@ -1088,6 +1132,121 @@
     }
   ],
   "roundCount": 2
+}
+```
+
+---
+
+### Get All Rounds with Answers for Player
+
+**Endpoint:** `GET /rounds/:roomId/player/:playerId`
+
+**Authentication:** None
+
+**Parameters:**
+- `roomId` (path): Room ID (integer)
+- `playerId` (path): Player ID (integer)
+
+**Description:** Get all rounds in a room with answers submitted by a specific player
+
+**Response (200 OK):**
+```json
+{
+  "roomId": 1,
+  "playerId": 5,
+  "playerName": "John",
+  "totalRounds": 2,
+  "rounds": [
+    {
+      "id": 1,
+      "roomId": 1,
+      "roundNumber": 1,
+      "letter": "A",
+      "timeTaken": 45,
+      "score": 100,
+      "playerId": 5,
+      "answers": [
+        {
+          "id": 1,
+          "categoryId": 2,
+          "answer": "Avatar"
+        }
+      ],
+      "createdAt": "2026-04-21T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Errors:**
+```json
+// Room not found
+{
+  "status": 404,
+  "message": "Room not found"
+}
+
+// Player not in room
+{
+  "status": 400,
+  "message": "Player is not in this room"
+}
+```
+
+---
+
+### Update Round Metrics
+
+**Endpoint:** `PUT /rounds/:roundId/update-metrics`
+
+**Authentication:** None
+
+**Parameters:**
+- `roundId` (path): Round ID (integer)
+
+**Body:**
+```json
+{
+  "timeTaken": 45,
+  "score": 100
+}
+```
+
+**Description:** Update time taken and/or score for a round
+
+**Response (200 OK):**
+```json
+{
+  "message": "Round metrics updated successfully",
+  "data": {
+    "id": 1,
+    "roundId": 1,
+    "playerId": 5,
+    "timeTaken": 45,
+    "score": 100,
+    "updatedAt": "2026-04-21T10:45:00Z"
+  }
+}
+```
+
+**Errors:**
+```json
+// Round not found
+{
+  "status": 404,
+  "message": "Round not found"
+}
+
+// Negative time
+{
+  "status": 400,
+  "message": "Time taken cannot be negative"
+}
+
+// Negative score
+{
+  "status": 400,
+  "message": "Score cannot be negative"
 }
 ```
 
@@ -1420,3 +1579,8 @@ Authorization: Bearer MTo0ZGdtQGV4YW1wbGUuY29t
 - Added Categories CRUD API (Create, Read, Update, Delete)
 - Categories support pagination
 - Admin-only create/update/delete operations
+- Added increment round API for room progression
+- Added get rounds with answers for player API
+- Added update round metrics API (score, timeTaken)
+- Updated Rounds section documentation with new endpoints
+- Total API Endpoints: 50+
