@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { rounds, roundAnswers, players } from "../../db/schema";
+import { rounds, roundAnswers, players, rooms } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface SubmitAnswersInput {
@@ -194,10 +194,6 @@ export const roundService = {
       throw { status: 404, message: "Player not found" };
     }
 
-    if (player.roomId !== roomId) {
-      throw { status: 400, message: "Player is not in this room" };
-    }
-
     // Get all rounds in room
     const allRounds = await db
       .select()
@@ -226,7 +222,7 @@ export const roundService = {
           })),
           createdAt: round.createdAt,
         };
-      })
+      }),
     );
 
     return {
@@ -241,7 +237,7 @@ export const roundService = {
   async updateRoundMetrics(
     roundId: number,
     timeTaken?: number,
-    score?: number
+    score?: number,
   ) {
     const round = await db.query.rounds.findFirst({
       where: eq(rounds.id, roundId),
