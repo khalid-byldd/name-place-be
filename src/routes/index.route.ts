@@ -13,7 +13,7 @@ const router = Router();
 router.use("/health", healthRoute);
 router.use("/auth", authRoute);
 router.use("/dashboard", authenticate, requireAdmin, dashboardRoute);
-router.use("/rooms", authenticate, requireAdmin, roomRoute);
+router.use("/rooms", roomRoute);
 router.use("/players", playerRoute);
 router.use("/rounds", roundRoute);
 router.use("/categories", authenticate, categoryRoute);

@@ -30,6 +30,7 @@
 **Description:** Check if the server is running
 
 **Response:**
+
 ```json
 {
   "status": "ok"
@@ -49,6 +50,7 @@
 **Description:** Login as admin (requires admin role)
 
 **Body:**
+
 ```json
 {
   "email": "admin@example.com",
@@ -57,6 +59,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Login successful",
@@ -70,6 +73,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Invalid credentials
 {
@@ -95,6 +99,7 @@
 **Description:** Get current authenticated user profile
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -104,6 +109,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -126,6 +132,7 @@
 **Description:** Create a new game category
 
 **Body:**
+
 ```json
 {
   "name": "Movies"
@@ -133,6 +140,7 @@
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "message": "Category created successfully",
@@ -145,6 +153,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Category name required
 {
@@ -168,10 +177,12 @@
 **Authentication:** None
 
 **Query Parameters:**
+
 - `limit` (optional): Max results (default: 100)
 - `offset` (optional): Offset for pagination (default: 0)
 
 **Response (200 OK):**
+
 ```json
 {
   "categories": [
@@ -201,9 +212,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `categoryId` (path): Category ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -214,6 +227,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -232,9 +246,11 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `categoryId` (path): Category ID (integer)
 
 **Body:**
+
 ```json
 {
   "name": "Hollywood Movies"
@@ -242,6 +258,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Category updated successfully",
@@ -254,6 +271,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Category not found
 {
@@ -285,9 +303,11 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `categoryId` (path): Category ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Category deleted successfully"
@@ -295,6 +315,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -315,6 +336,7 @@
 **Description:** Create a new player (no authentication required)
 
 **Body:**
+
 ```json
 {
   "name": "John Doe"
@@ -322,6 +344,7 @@
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "message": "Player created successfully",
@@ -336,6 +359,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 400,
@@ -352,9 +376,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -368,6 +394,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -384,9 +411,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Body:**
+
 ```json
 {
   "name": "Jane Doe",
@@ -395,6 +424,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Player updated successfully",
@@ -417,9 +447,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Body:**
+
 ```json
 {
   "code": "ABC123"
@@ -427,6 +459,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Joined room successfully",
@@ -445,6 +478,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Player not found
 {
@@ -480,9 +514,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Left room successfully",
@@ -496,6 +532,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -514,9 +551,11 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Body:**
+
 ```json
 {
   "reason": "Cheating"
@@ -524,6 +563,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Player banned successfully",
@@ -533,6 +573,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 404,
@@ -549,9 +590,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `playerId` (path): Player ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Player deleted successfully"
@@ -567,9 +610,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "roomId": 1,
@@ -604,6 +649,7 @@
 **Description:** Create a new room with auto-generated code and rounds
 
 **Body:**
+
 ```json
 {
   "name": "Game Room 1",
@@ -614,11 +660,13 @@
 ```
 
 **Notes:**
+
 - `categoryIds` is optional (4 random categories selected if not provided)
 - `roundTime` is in seconds (max 90 seconds)
 - Automatically creates all rounds and round answers
 
 **Response (201 Created):**
+
 ```json
 {
   "message": "Room created successfully",
@@ -637,6 +685,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 400,
@@ -653,10 +702,12 @@
 **Authentication:** Required (Bearer token)
 
 **Query Parameters:**
+
 - `limit` (optional): Max results (default: 50)
 - `offset` (optional): Offset for pagination (default: 0)
 
 **Response (200 OK):**
+
 ```json
 {
   "rooms": [
@@ -686,9 +737,11 @@
 **Authentication:** Required (Bearer token)
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -715,9 +768,11 @@
 **Authentication:** Required (Bearer token)
 
 **Parameters:**
+
 - `code` (path): Room code (string)
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -746,11 +801,13 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Start a room (change status from WAITING to IN_PROGRESS)
 
 **Response (200 OK):**
+
 ```json
 {
   "roomId": 1,
@@ -764,6 +821,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 400,
@@ -782,11 +840,13 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Broadcast a message to all players (room must be IN_PROGRESS)
 
 **Body:**
+
 ```json
 {
   "message": "Round 2 starting now!"
@@ -794,6 +854,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Message broadcasted successfully",
@@ -803,6 +864,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 400,
@@ -821,9 +883,11 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Body:**
+
 ```json
 {
   "name": "Updated Room Name",
@@ -834,6 +898,7 @@
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Room updated successfully",
@@ -860,11 +925,13 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Close a room and delete all associated players
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Room closed successfully"
@@ -880,11 +947,13 @@
 **Authentication:** Required (Bearer token)
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Get list of players currently connected via WebSocket
 
 **Response (200 OK):**
+
 ```json
 {
   "roomId": 1,
@@ -911,11 +980,13 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Check if round time has exceeded (optional fallback - clients should calculate locally)
 
 **Response (200 OK - Time remaining):**
+
 ```json
 {
   "updated": false,
@@ -926,6 +997,7 @@
 ```
 
 **Response (200 OK - Time exceeded):**
+
 ```json
 {
   "updated": true,
@@ -951,11 +1023,13 @@
 **Authorization:** Admin only
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Description:** Increment the current round of a room (with validation that it doesn't exceed roundCount)
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Room round incremented successfully",
@@ -970,6 +1044,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Room not found
 {
@@ -995,9 +1070,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roundId` (path): Round ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "id": 1,
@@ -1029,24 +1106,22 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roundId` (path): Round ID (integer)
 
 **Body:**
+
 ```json
 {
   "playerId": 1,
-  "answers": [
-    "Answer 1",
-    "Answer 2",
-    "Answer 3",
-    "Answer 4"
-  ]
+  "answers": ["Answer 1", "Answer 2", "Answer 3", "Answer 4"]
 }
 ```
 
 **Description:** Submit answers for a round (one answer per category)
 
 **Response (200 OK):**
+
 ```json
 {
   "message": "Answers submitted successfully",
@@ -1068,6 +1143,7 @@
 ```
 
 **Errors:**
+
 ```json
 {
   "status": 400,
@@ -1084,9 +1160,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roundId` (path): Round ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "roundId": 1,
@@ -1111,9 +1189,11 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 
 **Response (200 OK):**
+
 ```json
 {
   "roomId": 1,
@@ -1144,12 +1224,14 @@
 **Authentication:** None
 
 **Parameters:**
+
 - `roomId` (path): Room ID (integer)
 - `playerId` (path): Player ID (integer)
 
 **Description:** Get all rounds in a room with answers submitted by a specific player
 
 **Response (200 OK):**
+
 ```json
 {
   "roomId": 1,
@@ -1179,6 +1261,7 @@
 ```
 
 **Errors:**
+
 ```json
 // Room not found
 {
@@ -1190,63 +1273,6 @@
 {
   "status": 400,
   "message": "Player is not in this room"
-}
-```
-
----
-
-### Update Round Metrics
-
-**Endpoint:** `PUT /rounds/:roundId/update-metrics`
-
-**Authentication:** None
-
-**Parameters:**
-- `roundId` (path): Round ID (integer)
-
-**Body:**
-```json
-{
-  "timeTaken": 45,
-  "score": 100
-}
-```
-
-**Description:** Update time taken and/or score for a round
-
-**Response (200 OK):**
-```json
-{
-  "message": "Round metrics updated successfully",
-  "data": {
-    "id": 1,
-    "roundId": 1,
-    "playerId": 5,
-    "timeTaken": 45,
-    "score": 100,
-    "updatedAt": "2026-04-21T10:45:00Z"
-  }
-}
-```
-
-**Errors:**
-```json
-// Round not found
-{
-  "status": 404,
-  "message": "Round not found"
-}
-
-// Negative time
-{
-  "status": 400,
-  "message": "Time taken cannot be negative"
-}
-
-// Negative score
-{
-  "status": 400,
-  "message": "Score cannot be negative"
 }
 ```
 
@@ -1265,6 +1291,7 @@
 **Description:** Get game statistics
 
 **Response (200 OK):**
+
 ```json
 {
   "totalRoomsCreated": 10,
@@ -1283,6 +1310,7 @@
 ### Connect to Room
 
 **Send:**
+
 ```json
 {
   "type": "ROOM_JOIN",
@@ -1295,6 +1323,7 @@
 ```
 
 **Receive:**
+
 ```json
 {
   "type": "JOIN_SUCCESS",
@@ -1313,6 +1342,7 @@
 ### Leave Room
 
 **Send:**
+
 ```json
 {
   "type": "ROOM_LEAVE"
@@ -1324,6 +1354,7 @@
 ### Get Room Players
 
 **Send:**
+
 ```json
 {
   "type": "GET_ROOM_PLAYERS"
@@ -1331,6 +1362,7 @@
 ```
 
 **Receive:**
+
 ```json
 {
   "type": "ROOM_PLAYERS",
@@ -1351,6 +1383,7 @@
 ### Send Room Message
 
 **Send:**
+
 ```json
 {
   "type": "ROOM_MESSAGE",
@@ -1361,6 +1394,7 @@
 ```
 
 **Broadcast Receive:**
+
 ```json
 {
   "type": "ROOM_MESSAGE",
@@ -1378,6 +1412,7 @@
 ### Check Round Time (Client-side optional fallback)
 
 **Send:**
+
 ```json
 {
   "type": "CHECK_ROUND_TIME"
@@ -1385,6 +1420,7 @@
 ```
 
 **Receive:**
+
 ```json
 {
   "type": "ROUND_TIME_CHECK",
@@ -1402,6 +1438,7 @@
 ### Submit Round Over
 
 **Send:**
+
 ```json
 {
   "type": "ROUND_OVER"
@@ -1409,6 +1446,7 @@
 ```
 
 **Broadcast Receive:**
+
 ```json
 {
   "type": "ROUND_COMPLETED",
@@ -1427,6 +1465,7 @@
 ### Update Player Info
 
 **Send:**
+
 ```json
 {
   "type": "PLAYER_UPDATE",
@@ -1438,6 +1477,7 @@
 ```
 
 **Broadcast Receive:**
+
 ```json
 {
   "type": "PLAYER_UPDATED",
@@ -1454,6 +1494,7 @@
 ### Broadcast Events
 
 **Admin Message:**
+
 ```json
 {
   "type": "ADMIN_MESSAGE",
@@ -1466,6 +1507,7 @@
 ```
 
 **Room Started:**
+
 ```json
 {
   "type": "ROOM_STARTED",
@@ -1482,6 +1524,7 @@
 ```
 
 **Player Joined:**
+
 ```json
 {
   "type": "PLAYER_JOINED_ROOM",
@@ -1495,6 +1538,7 @@
 ```
 
 **Player Left:**
+
 ```json
 {
   "type": "PLAYER_LEFT_ROOM",
@@ -1508,6 +1552,7 @@
 ```
 
 **Player Banned:**
+
 ```json
 {
   "type": "PLAYER_BANNED",
@@ -1521,6 +1566,7 @@
 ```
 
 **Room Finished:**
+
 ```json
 {
   "type": "ROOM_FINISHED",
@@ -1560,6 +1606,7 @@ All error responses follow this format:
 ### Bearer Token
 
 Include token in Authorization header:
+
 ```
 Authorization: Bearer <token>
 ```
@@ -1567,6 +1614,7 @@ Authorization: Bearer <token>
 Token format: Base64 encoded `userId:email`
 
 Example:
+
 ```
 Authorization: Bearer MTo0ZGdtQGV4YW1wbGUuY29t
 ```
@@ -1576,11 +1624,11 @@ Authorization: Bearer MTo0ZGdtQGV4YW1wbGUuY29t
 **Last Updated:** April 21, 2026
 
 **Latest Changes:**
+
 - Added Categories CRUD API (Create, Read, Update, Delete)
 - Categories support pagination
 - Admin-only create/update/delete operations
 - Added increment round API for room progression
 - Added get rounds with answers for player API
-- Added update round metrics API (score, timeTaken)
 - Updated Rounds section documentation with new endpoints
 - Total API Endpoints: 50+

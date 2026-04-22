@@ -112,8 +112,8 @@ router.get(
   "/:roomId/player/:playerId",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const roomId = parseInt(req.params.roomId);
-      const playerId = parseInt(req.params.playerId);
+      const roomId = parseInt(req.params.roomId as string);
+      const playerId = parseInt(req.params.playerId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
@@ -125,41 +125,13 @@ router.get(
 
       const result = await roundService.getRoundsByPlayerInRoom(
         roomId,
-        playerId
+        playerId,
       );
       res.json(result);
     } catch (error) {
       next(error);
     }
-  }
-);
-
-// Update round metrics (score and timeTaken)
-router.put(
-  "/:roundId/update-metrics",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const roundId = parseInt(req.params.roundId);
-      const { timeTaken, score } = req.body;
-
-      if (isNaN(roundId)) {
-        return res.status(400).json({ message: "Invalid round ID" });
-      }
-
-      const result = await roundService.updateRoundMetrics(
-        roundId,
-        timeTaken,
-        score
-      );
-
-      res.json({
-        message: "Round metrics updated successfully",
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+  },
 );
 
 export default router;

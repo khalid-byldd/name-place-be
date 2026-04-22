@@ -26,7 +26,7 @@ export const roomWsManager = {
     socket: any,
     roomId: number,
     playerId: number,
-    playerName: string
+    playerName: string,
   ) {
     if (!activeConnections.has(roomId)) {
       activeConnections.set(roomId, new Set());
@@ -63,7 +63,7 @@ export const roomWsManager = {
             roundCount: room.roundCount,
             roundTime: room.roundTime,
           },
-        })
+        }),
       );
     }
 
@@ -101,6 +101,9 @@ export const roomWsManager = {
 
   getRoomPlayers(roomId: number) {
     const clients = activeConnections.get(roomId) || new Set();
+    logger.info(
+      `Getting players for room ${roomId}: ${JSON.stringify(clients)} connected`,
+    );
     return Array.from(clients).map((c) => ({
       playerId: c.playerId,
       playerName: c.playerName,

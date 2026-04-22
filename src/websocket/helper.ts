@@ -7,6 +7,7 @@ import { roomService } from "../modules/room/room.service";
 import { db } from "../db/client";
 import { rooms, bannedPlayers } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { log } from "console";
 
 interface ExtendedSocket extends WebSocket {
   roomId?: number;
@@ -15,11 +16,13 @@ interface ExtendedSocket extends WebSocket {
 }
 
 export const handleWSConnection = (socket: ExtendedSocket) => {
-  logger.info("Client connected");
+  logger.info("Client connected"); // Log socket object
 
   socket.on("message", async (data) => {
     try {
       const message: WSMessage = JSON.parse(data.toString());
+      logger.info(`Received WS message: ${message.toString()}`); // Log incoming message
+      logger.info(`Received WS message: ${message.type}`); // Log incoming message
 
       switch (message.type) {
         case "PING":
@@ -51,7 +54,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Player is banned and cannot join any room",
-                  })
+                  }),
                 );
                 break;
               }
@@ -66,7 +69,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Room not found",
-                  })
+                  }),
                 );
                 break;
               }
@@ -76,21 +79,26 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: `Cannot join room with status ${room.status}`,
-                  })
+                  }),
                 );
                 break;
               }
 
               socket.roomId = roomId;
               socket.playerId = playerId;
-              await roomWsManager.joinRoom(socket, roomId, playerId, playerName);
+              await roomWsManager.joinRoom(
+                socket,
+                roomId,
+                playerId,
+                playerName,
+              );
             } catch (err) {
               logger.error(`Error joining room: ${err}`);
               socket.send(
                 JSON.stringify({
                   type: "ERROR",
                   payload: "Failed to join room",
-                })
+                }),
               );
             }
           }
@@ -110,14 +118,15 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
 
         case "GET_ROOM_PLAYERS":
           {
-            const roomId = socket.roomId;
+            const roomId = message.payload.roomId || socket.roomId;
             if (roomId) {
               const players = roomWsManager.getRoomPlayers(roomId);
+
               socket.send(
                 JSON.stringify({
                   type: "ROOM_PLAYERS",
                   payload: { roomId, players },
-                })
+                }),
               );
             }
           }
@@ -151,7 +160,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "PLAYER_UPDATED",
                     payload: { playerId, name, status },
-                  })
+                  }),
                 );
 
                 // Broadcast to room if player is in one
@@ -170,7 +179,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Failed to update player",
-                  })
+                  }),
                 );
               }
             }
@@ -214,7 +223,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Failed to process round completion",
-                  })
+                  }),
                 );
               }
             }
@@ -226,13 +235,14 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
             const roomId = socket.roomId;
             if (roomId) {
               try {
-                const result = await roomService.checkAndAutoIncrementRounds(roomId);
+                const result =
+                  await roomService.checkAndAutoIncrementRounds(roomId);
 
                 socket.send(
                   JSON.stringify({
                     type: "ROUND_TIME_CHECK",
                     payload: result,
-                  })
+                  }),
                 );
               } catch (err) {
                 logger.error(`Error checking round time: ${err}`);
@@ -240,7 +250,7 @@ export const handleWSConnection = (socket: ExtendedSocket) => {
                   JSON.stringify({
                     type: "ERROR",
                     payload: "Failed to check round time",
-                  })
+                  }),
                 );
               }
             }
