@@ -176,24 +176,13 @@ export const roundService = {
   },
 
   async getRoundsByPlayerInRoom(roomId: number, playerId: number) {
-    // Verify room exists and player is in room (single query with join)
-    const playerInRoom = await db
-      .select({
-        playerId: players.id,
-        playerName: players.name,
-        playerRoomId: players.roomId,
-      })
-      .from(players)
-      .innerJoin(rooms, eq(rooms.id, players.roomId))
-      .where(and(eq(players.id, playerId), eq(rooms.id, roomId)))
-      .limit(1);
+    const player = await db.query.players.findFirst({
+      where: eq(players.id, playerId),
+    });
 
-    if (playerInRoom.length === 0) {
-      throw { status: 404, message: "Player not found or not in this room" };
+    if (!player) {
+      throw { status: 404, message: "Player not found" };
     }
-
-    const player = playerInRoom[0];
-
     // Get all rounds with answers using LEFT JOIN (single query)
     const roundsData = await db
       .select({
@@ -243,7 +232,7 @@ export const roundService = {
     return {
       roomId,
       playerId,
-      playerName: player.playerName,
+      playerName: player.name,
       totalRounds: roundsMap.size,
       rounds: Array.from(roundsMap.values()),
     };

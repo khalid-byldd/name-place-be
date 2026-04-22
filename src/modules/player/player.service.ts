@@ -19,7 +19,6 @@ export const playerService = {
       .insert(players)
       .values({
         name: input.name,
-        roomId: input.roomId,
         status: "ACTIVE",
       })
       .returning();
@@ -27,7 +26,6 @@ export const playerService = {
     return {
       id: newPlayer[0].id,
       name: newPlayer[0].name,
-      roomId: newPlayer[0].roomId,
       status: newPlayer[0].status,
       createdAt: newPlayer[0].createdAt,
     };
@@ -50,7 +48,6 @@ export const playerService = {
     return {
       id: player.id,
       name: player.name,
-      roomId: player.roomId,
       status: player.status,
       isBanned: !!banned,
       createdAt: player.createdAt,
@@ -80,24 +77,9 @@ export const playerService = {
       .where(eq(players.id, playerId))
       .returning();
 
-    // Broadcast player update to room if player is in one
-    if (updated[0].roomId) {
-      roomWsManager.broadcastToRoom(updated[0].roomId, {
-        type: "PLAYER_INFO_CHANGED",
-        payload: {
-          playerId: updated[0].id,
-          name: updated[0].name,
-          status: updated[0].status,
-          changedVia: "api",
-          timestamp: new Date(),
-        },
-      });
-    }
-
     return {
       id: updated[0].id,
       name: updated[0].name,
-      roomId: updated[0].roomId,
       status: updated[0].status,
       updatedAt: updated[0].updatedAt,
     };
@@ -137,73 +119,32 @@ export const playerService = {
       };
     }
 
-    const wasAlreadyInRoom = player.roomId === roomId;
+    const isThere = roomWsManager.getRoomPlayers(roomId).filter((players) => {
+      players.playerId === playerId;
+    })[0];
 
-    const updated = await db
-      .update(players)
-      .set({ roomId, updatedAt: new Date() })
-      .where(eq(players.id, playerId))
-      .returning();
-
-    // Broadcast to WebSocket room that player joined or rejoined
-    const eventType = wasAlreadyInRoom ? "PLAYER_REJOINED_ROOM" : "PLAYER_JOINED_ROOM";
+    if (isThere) {
+      throw {
+        status: 400,
+        message: "Player is already in the room",
+      };
+    }
 
     roomWsManager.broadcastToRoom(roomId, {
-      type: eventType,
+      type: "PLAYER_JOINED_ROOM",
       payload: {
-        playerId: updated[0].id,
-        playerName: updated[0].name,
+        playerId: player.id,
+        playerName: player.name,
         joinedVia: "api",
         timestamp: new Date(),
       },
     });
 
     return {
-      id: updated[0].id,
-      name: updated[0].name,
-      roomId: updated[0].roomId,
-      status: updated[0].status,
-    };
-  },
-
-  async leaveRoom(playerId: number) {
-    const player = await db.query.players.findFirst({
-      where: eq(players.id, playerId),
-    });
-
-    if (!player) {
-      throw { status: 404, message: "Player not found" };
-    }
-
-    const roomId = player.roomId;
-
-    if (!roomId) {
-      throw { status: 400, message: "Player is not in any room" };
-    }
-
-    const updated = await db
-      .update(players)
-      .set({ roomId: null, updatedAt: new Date() })
-      .where(eq(players.id, playerId))
-      .returning();
-
-    // Broadcast to WebSocket room that player left via API
-    roomWsManager.broadcastToRoom(roomId, {
-      type: "PLAYER_LEFT_ROOM",
-      payload: {
-        playerId: updated[0].id,
-        playerName: player.name,
-        leftVia: "api",
-        timestamp: new Date(),
-      },
-    });
-
-    return {
-      id: updated[0].id,
-      name: updated[0].name,
-      roomId: updated[0].roomId,
-      status: updated[0].status,
-      message: "Left room successfully",
+      id: player.id,
+      name: player.name,
+      roomId,
+      status: player.status,
     };
   },
 
@@ -250,19 +191,6 @@ export const playerService = {
     // Immediately disconnect player from WebSocket
     roomWsManager.disconnectPlayer(playerId, "Player has been banned");
 
-    // Notify room if player is in one
-    if (player.roomId) {
-      roomWsManager.broadcastToRoom(player.roomId, {
-        type: "PLAYER_BANNED",
-        payload: {
-          playerId: player.id,
-          playerName: player.name,
-          reason: reason || "No reason provided",
-          timestamp: new Date(),
-        },
-      });
-    }
-
     return {
       message: "Player banned successfully",
       playerId,
@@ -271,15 +199,10 @@ export const playerService = {
   },
 
   async getPlayersByRoom(roomId: number) {
-    const roomPlayers = await db.query.players.findMany({
-      where: eq(players.roomId, roomId),
-    });
-
+    const roomPlayers = roomWsManager.getRoomPlayers(roomId);
     return roomPlayers.map((p) => ({
-      id: p.id,
-      name: p.name,
-      status: p.status,
-      roomId: p.roomId,
+      id: p.playerId,
+      name: p.playerName,
     }));
   },
 };

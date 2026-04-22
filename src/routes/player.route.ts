@@ -88,6 +88,7 @@ router.post(
       }
 
       const room = await roomService.getRoomByCode(code);
+
       const joined = await playerService.joinRoom(playerId, room.id);
 
       res.json({
@@ -98,29 +99,6 @@ router.post(
           name: room.name,
           code: room.code,
         },
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-// Leave room
-router.post(
-  "/:playerId/leave-room",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const playerId = parseInt(req.params.playerId as string);
-
-      if (isNaN(playerId)) {
-        return res.status(400).json({ message: "Invalid player ID" });
-      }
-
-      const player = await playerService.leaveRoom(playerId);
-
-      res.json({
-        message: "Left room successfully",
-        player,
       });
     } catch (error) {
       next(error);

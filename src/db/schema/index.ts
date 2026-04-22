@@ -61,10 +61,6 @@ export const players = pgTable("players", {
 
   name: varchar("name", { length: 255 }).notNull(),
 
-  roomId: integer("room_id").references(() => rooms.id, {
-    onDelete: "cascade",
-  }),
-
   status: playerStatusEnum("status").default("ACTIVE"),
 
   createdAt: timestamp("created_at").defaultNow(),

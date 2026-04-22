@@ -116,10 +116,6 @@ export const roomService = {
       throw { status: 404, message: "Room not found" };
     }
 
-    const playersInRoom = await db.query.players.findMany({
-      where: eq(players.roomId, roomId),
-    });
-
     const categoryIds = room.categoryIds.split(",").map((id) => parseInt(id));
 
     return {
@@ -132,7 +128,6 @@ export const roomService = {
       roundStartedAt: room.roundStartedAt,
       categoryIds: categoryIds,
       status: room.status,
-      playerCount: playersInRoom.length,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };
@@ -229,11 +224,15 @@ export const roomService = {
     // Disconnect all WebSocket clients in the room
     roomWsManager.closeRoom(roomId);
 
-    // Delete all players in the room
-    await db.delete(players).where(eq(players.roomId, roomId));
-
     // Delete the room
-    await db.delete(rooms).where(eq(rooms.id, roomId));
+    await db
+      .update(rooms)
+      .set({
+        status: "FINISHED",
+        updatedAt: new Date(),
+      })
+      .where(eq(rooms.id, roomId))
+      .returning();
 
     return { message: "Room closed successfully" };
   },

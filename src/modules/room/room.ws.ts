@@ -44,7 +44,7 @@ export const roomWsManager = {
 
     if (room) {
       this.broadcastToRoom(roomId, {
-        type: "PLAYER_JOINED",
+        type: "PLAYER_JOINED_ROOM",
         payload: {
           playerId,
           playerName,
@@ -85,7 +85,7 @@ export const roomWsManager = {
 
     if (leftPlayer) {
       this.broadcastToRoom(roomId, {
-        type: "PLAYER_LEFT",
+        type: "PLAYER_LEFT_ROOM",
         payload: {
           playerId: leftPlayer.playerId,
           playerName: leftPlayer.playerName,
