@@ -1,5 +1,5 @@
 import { db } from "../../db/client";
-import { rounds, roundAnswers, players, rooms } from "../../db/schema";
+import { rounds, roundAnswers, players, rooms, categories } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 
 export interface SubmitAnswersInput {
@@ -50,12 +50,37 @@ export const roundService = {
       throw { status: 404, message: "Round not found" };
     }
 
+    // Get all answers with category data using LEFT JOIN
+    const answersData = await db
+      .select({
+        answerId: roundAnswers.id,
+        categoryId: roundAnswers.categoryId,
+        categoryName: categories.name,
+        answer: roundAnswers.answer,
+        playerId: roundAnswers.playerId,
+        timeTaken: roundAnswers.timeTaken,
+        score: roundAnswers.score,
+      })
+      .from(roundAnswers)
+      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
+      .where(eq(roundAnswers.roundId, roundId));
+
+    const answers = answersData.map((row) => ({
+      id: row.answerId,
+      categoryId: row.categoryId,
+      category: row.categoryName ? { id: row.categoryId, name: row.categoryName } : null,
+      answer: row.answer,
+      playerId: row.playerId,
+      timeTaken: row.timeTaken,
+      score: row.score,
+    }));
+
     return {
       id: round.id,
       roomId: round.roomId,
       roundNumber: round.roundNumber,
       letter: round.letter,
-      categoryIds: round.categoryIds,
+      answers,
       createdAt: round.createdAt,
     };
   },
@@ -77,37 +102,52 @@ export const roundService = {
       throw { status: 404, message: "Round not found" };
     }
 
-    // Get all round answers for this round
+    // Parse category IDs from round
+    const categoryIds = round.categoryIds
+      .split(",")
+      .map((id) => parseInt(id.trim()));
+
+    if (categoryIds.length !== input.answers.length) {
+      throw {
+        status: 400,
+        message: `Expected ${categoryIds.length} answers, got ${input.answers.length}`,
+      };
+    }
+
+    // Check if player already submitted answers for this round
     const existingAnswers = await db.query.roundAnswers.findFirst({
-      where: eq(roundAnswers.roundId, input.roundId),
+      where: and(
+        eq(roundAnswers.roundId, input.roundId),
+        eq(roundAnswers.playerId, input.playerId)
+      ),
     });
 
     if (existingAnswers) {
       throw {
         status: 400,
-        message: `Already submitted answers for round ${input.roundId} by player ${input.playerId}`,
+        message: `Player already submitted answers for round ${input.roundId}`,
       };
     }
 
-    // Update each round answer with the player's answer
-    const answersWithComma = input.answers
-      .map((answer) => answer.trim())
-      .join(",");
-
-    const newAnswer = await db
+    // Insert one answer per category
+    const insertedAnswers = await db
       .insert(roundAnswers)
-      .values({
-        roundId: input.roundId,
-        playerId: input.playerId,
-        answers: answersWithComma,
-        timeTaken: input.timeTaken,
-        score: input.score,
-      })
+      .values(
+        input.answers.map((answer, index) => ({
+          roundId: input.roundId,
+          categoryId: categoryIds[index],
+          playerId: input.playerId,
+          answer: answer.trim(),
+          timeTaken: input.timeTaken,
+          score: input.score,
+        }))
+      )
       .returning();
 
     return {
       roundId: input.roundId,
       playerId: input.playerId,
+      answersCount: insertedAnswers.length,
     };
   },
 
@@ -125,11 +165,31 @@ export const roundService = {
   },
 
   async getRoundAnswers(roundId: number) {
-    const answers = await db.query.roundAnswers.findMany({
-      where: eq(roundAnswers.roundId, roundId),
-    });
+    const answersData = await db
+      .select({
+        id: roundAnswers.id,
+        categoryId: roundAnswers.categoryId,
+        categoryName: categories.name,
+        answer: roundAnswers.answer,
+        playerId: roundAnswers.playerId,
+        timeTaken: roundAnswers.timeTaken,
+        score: roundAnswers.score,
+        createdAt: roundAnswers.createdAt,
+      })
+      .from(roundAnswers)
+      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
+      .where(eq(roundAnswers.roundId, roundId));
 
-    return answers;
+    return answersData.map((row) => ({
+      id: row.id,
+      categoryId: row.categoryId,
+      category: row.categoryName ? { id: row.categoryId, name: row.categoryName } : null,
+      answer: row.answer,
+      playerId: row.playerId,
+      timeTaken: row.timeTaken,
+      score: row.score,
+      createdAt: row.createdAt,
+    }));
   },
 
   getRandomLetter(): string {
@@ -183,23 +243,26 @@ export const roundService = {
     if (!player) {
       throw { status: 404, message: "Player not found" };
     }
-    // Get all rounds with answers using LEFT JOIN (single query)
+
+    // Get all rounds with answers using LEFT JOIN
     const roundsData = await db
       .select({
         roundId: rounds.id,
         roomId: rounds.roomId,
         roundNumber: rounds.roundNumber,
         letter: rounds.letter,
+        roundCreatedAt: rounds.createdAt,
+        answerId: roundAnswers.id,
+        answerCategoryId: roundAnswers.categoryId,
+        categoryName: categories.name,
+        answer: roundAnswers.answer,
+        answerPlayerId: roundAnswers.playerId,
         timeTaken: roundAnswers.timeTaken,
         score: roundAnswers.score,
-        playerId: roundAnswers.playerId,
-        createdAt: rounds.createdAt,
-        answerId: roundAnswers.id,
-        categoryId: rounds.categoryIds,
-        answer: roundAnswers.answers,
       })
       .from(rounds)
       .leftJoin(roundAnswers, eq(roundAnswers.roundId, rounds.id))
+      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
       .where(eq(rounds.roomId, roomId))
       .orderBy(rounds.id);
 
@@ -212,10 +275,7 @@ export const roundService = {
           roomId: row.roomId,
           roundNumber: row.roundNumber,
           letter: row.letter,
-          timeTaken: row.timeTaken,
-          score: row.score,
-          playerId: row.playerId,
-          createdAt: row.createdAt,
+          createdAt: row.roundCreatedAt,
           answers: [],
         });
       }
@@ -223,8 +283,12 @@ export const roundService = {
       if (row.answerId) {
         roundsMap.get(row.roundId).answers.push({
           id: row.answerId,
-          categoryId: row.categoryId,
+          categoryId: row.answerCategoryId,
+          category: row.categoryName ? { id: row.answerCategoryId, name: row.categoryName } : null,
           answer: row.answer,
+          playerId: row.answerPlayerId,
+          timeTaken: row.timeTaken,
+          score: row.score,
         });
       }
     });
