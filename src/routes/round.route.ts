@@ -38,9 +38,9 @@ router.post(
         return res.status(400).json({ message: "Player ID is required" });
       }
 
-      if (!answers || !Array.isArray(answers)) {
+      if (!answers) {
         return res.status(400).json({
-          message: "Answers must be provided as an array",
+          message: "Answers is required",
         });
       }
 

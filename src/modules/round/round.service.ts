@@ -1,11 +1,19 @@
+import { sql } from "drizzle-orm";
 import { db } from "../../db/client";
-import { rounds, roundAnswers, players, rooms, categories } from "../../db/schema";
+import {
+  rounds,
+  roundAnswers,
+  players,
+  rooms,
+  categories,
+} from "../../db/schema";
 import { eq, and } from "drizzle-orm";
+import { logger } from "../../utils/logger";
 
 export interface SubmitAnswersInput {
   playerId: number;
   roundId: number;
-  answers: string[];
+  answers: string;
   timeTaken: number; // Time taken in seconds
   score: number; // Score for the submitted answers
 }
@@ -42,46 +50,33 @@ export const roundService = {
   },
 
   async getRoundById(roundId: number) {
-    const round = await db.query.rounds.findFirst({
-      where: eq(rounds.id, roundId),
-    });
+    const round = await db
+      .select({
+        id: rounds.id,
+        roomId: rounds.roomId,
+        roundNumber: rounds.roundNumber,
+        letter: rounds.letter,
+        categories: sql`json_agg(${categories})`.as("categories"),
+        createdAt: rounds.createdAt,
+      })
+      .from(rounds)
+      .leftJoin(
+        categories,
+        sql`${categories.id} = ANY(string_to_array(${rounds.categoryIds}, ',')::int[])`,
+      )
+      .groupBy(rounds.id);
 
     if (!round) {
       throw { status: 404, message: "Round not found" };
     }
-
-    // Get all answers with category data using LEFT JOIN
-    const answersData = await db
-      .select({
-        answerId: roundAnswers.id,
-        categoryId: roundAnswers.categoryId,
-        categoryName: categories.name,
-        answer: roundAnswers.answer,
-        playerId: roundAnswers.playerId,
-        timeTaken: roundAnswers.timeTaken,
-        score: roundAnswers.score,
-      })
-      .from(roundAnswers)
-      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
-      .where(eq(roundAnswers.roundId, roundId));
-
-    const answers = answersData.map((row) => ({
-      id: row.answerId,
-      categoryId: row.categoryId,
-      category: row.categoryName ? { id: row.categoryId, name: row.categoryName } : null,
-      answer: row.answer,
-      playerId: row.playerId,
-      timeTaken: row.timeTaken,
-      score: row.score,
-    }));
-
+    logger.info(`Round with categories: ${JSON.stringify(round[0])}`);
     return {
-      id: round.id,
-      roomId: round.roomId,
-      roundNumber: round.roundNumber,
-      letter: round.letter,
-      answers,
-      createdAt: round.createdAt,
+      id: round[0].id,
+      roomId: round[0].roomId,
+      roundNumber: round[0].roundNumber,
+      letter: round[0].letter,
+      createdAt: round[0].createdAt,
+      categories: round[0].categories,
     };
   },
 
@@ -102,23 +97,11 @@ export const roundService = {
       throw { status: 404, message: "Round not found" };
     }
 
-    // Parse category IDs from round
-    const categoryIds = round.categoryIds
-      .split(",")
-      .map((id) => parseInt(id.trim()));
-
-    if (categoryIds.length !== input.answers.length) {
-      throw {
-        status: 400,
-        message: `Expected ${categoryIds.length} answers, got ${input.answers.length}`,
-      };
-    }
-
     // Check if player already submitted answers for this round
     const existingAnswers = await db.query.roundAnswers.findFirst({
       where: and(
         eq(roundAnswers.roundId, input.roundId),
-        eq(roundAnswers.playerId, input.playerId)
+        eq(roundAnswers.playerId, input.playerId),
       ),
     });
 
@@ -132,22 +115,19 @@ export const roundService = {
     // Insert one answer per category
     const insertedAnswers = await db
       .insert(roundAnswers)
-      .values(
-        input.answers.map((answer, index) => ({
-          roundId: input.roundId,
-          categoryId: categoryIds[index],
-          playerId: input.playerId,
-          answer: answer.trim(),
-          timeTaken: input.timeTaken,
-          score: input.score,
-        }))
-      )
+      .values({
+        roundId: input.roundId,
+        playerId: input.playerId,
+        answer: input.answers.trim(),
+        timeTaken: input.timeTaken,
+        score: input.score,
+      })
       .returning();
 
     return {
       roundId: input.roundId,
       playerId: input.playerId,
-      answersCount: insertedAnswers.length,
+      answers: insertedAnswers[0].answer,
     };
   },
 
@@ -168,7 +148,7 @@ export const roundService = {
     const answersData = await db
       .select({
         id: roundAnswers.id,
-        categoryId: roundAnswers.categoryId,
+        // categoryId: roundAnswers.categoryId,
         categoryName: categories.name,
         answer: roundAnswers.answer,
         playerId: roundAnswers.playerId,
@@ -177,13 +157,15 @@ export const roundService = {
         createdAt: roundAnswers.createdAt,
       })
       .from(roundAnswers)
-      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
+      // .leftJoin(rounds, eq(rounds., categories.id))
       .where(eq(roundAnswers.roundId, roundId));
 
     return answersData.map((row) => ({
       id: row.id,
-      categoryId: row.categoryId,
-      category: row.categoryName ? { id: row.categoryId, name: row.categoryName } : null,
+      // categoryId: row.categoryId,
+      // category: row.categoryName
+      //   ? { id: row.categoryId, name: row.categoryName }
+      //   : null,
       answer: row.answer,
       playerId: row.playerId,
       timeTaken: row.timeTaken,
@@ -253,7 +235,7 @@ export const roundService = {
         letter: rounds.letter,
         roundCreatedAt: rounds.createdAt,
         answerId: roundAnswers.id,
-        answerCategoryId: roundAnswers.categoryId,
+        // answerCategoryId: roundAnswers.categoryId,
         categoryName: categories.name,
         answer: roundAnswers.answer,
         answerPlayerId: roundAnswers.playerId,
@@ -262,7 +244,7 @@ export const roundService = {
       })
       .from(rounds)
       .leftJoin(roundAnswers, eq(roundAnswers.roundId, rounds.id))
-      .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
+      // .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
       .where(eq(rounds.roomId, roomId))
       .orderBy(rounds.id);
 
@@ -283,8 +265,10 @@ export const roundService = {
       if (row.answerId) {
         roundsMap.get(row.roundId).answers.push({
           id: row.answerId,
-          categoryId: row.answerCategoryId,
-          category: row.categoryName ? { id: row.answerCategoryId, name: row.categoryName } : null,
+          // categoryId: row.answerCategoryId,
+          // category: row.categoryName
+          //   ? { id: row.answerCategoryId, name: row.categoryName }
+          //   : null,
           answer: row.answer,
           playerId: row.answerPlayerId,
           timeTaken: row.timeTaken,
