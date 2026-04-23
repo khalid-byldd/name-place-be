@@ -217,72 +217,49 @@ export const roundService = {
     };
   },
 
-  async getRoundsByPlayerInRoom(roomId: number, playerId: number) {
-    const player = await db.query.players.findFirst({
-      where: eq(players.id, playerId),
+  async getRoundsByPlayerInRoom(roomId: number) {
+    const room = await db.query.rooms.findFirst({
+      where: eq(rooms.id, roomId),
     });
 
-    if (!player) {
-      throw { status: 404, message: "Player not found" };
+    if (!room) {
+      throw { status: 404, message: "Room not found" };
     }
 
-    // Get all rounds with answers using LEFT JOIN
-    const roundsData = await db
+    const result = await db
       .select({
         roundId: rounds.id,
-        roomId: rounds.roomId,
-        roundNumber: rounds.roundNumber,
+        playerId: players.id,
+        playerName: players.name,
         letter: rounds.letter,
-        roundCreatedAt: rounds.createdAt,
-        answerId: roundAnswers.id,
-        // answerCategoryId: roundAnswers.categoryId,
-        categoryName: categories.name,
-        answer: roundAnswers.answer,
-        answerPlayerId: roundAnswers.playerId,
-        timeTaken: roundAnswers.timeTaken,
+
+        // convert comma-separated answers into array
+        answers: sql<string[]>`
+        string_to_array(${roundAnswers.answer}, ',')
+      `,
+
         score: roundAnswers.score,
+        timeTaken: roundAnswers.timeTaken,
+        roundCount: rooms.roundCount,
+        roundAnswersId: roundAnswers.id,
+
+        // categories as JSON array
+        categories: sql<{ id: number; name: string }[]>`
+        (
+          SELECT json_agg(json_build_object('id', c.id, 'name', c.name))
+          FROM ${categories} c
+          WHERE c.id = ANY(
+            string_to_array(${rounds.categoryIds}, ',')::int[]
+          )
+        )
+      `,
       })
-      .from(rounds)
-      .leftJoin(roundAnswers, eq(roundAnswers.roundId, rounds.id))
-      // .leftJoin(categories, eq(roundAnswers.categoryId, categories.id))
-      .where(eq(rounds.roomId, roomId))
-      .orderBy(rounds.id);
+      .from(roundAnswers)
+      .innerJoin(rounds, eq(roundAnswers.roundId, rounds.id))
+      .innerJoin(players, eq(roundAnswers.playerId, players.id))
+      .innerJoin(rooms, eq(rounds.roomId, rooms.id))
+      .where(eq(rounds.roomId, roomId));
 
-    // Transform flat result into nested structure
-    const roundsMap = new Map();
-    roundsData.forEach((row) => {
-      if (!roundsMap.has(row.roundId)) {
-        roundsMap.set(row.roundId, {
-          id: row.roundId,
-          roomId: row.roomId,
-          roundNumber: row.roundNumber,
-          letter: row.letter,
-          createdAt: row.roundCreatedAt,
-          answers: [],
-        });
-      }
-
-      if (row.answerId) {
-        roundsMap.get(row.roundId).answers.push({
-          id: row.answerId,
-          // categoryId: row.answerCategoryId,
-          // category: row.categoryName
-          //   ? { id: row.answerCategoryId, name: row.categoryName }
-          //   : null,
-          answer: row.answer,
-          playerId: row.answerPlayerId,
-          timeTaken: row.timeTaken,
-          score: row.score,
-        });
-      }
-    });
-
-    return {
-      roomId,
-      playerId,
-      playerName: player.name,
-      totalRounds: roundsMap.size,
-      rounds: Array.from(roundsMap.values()),
-    };
+    return result;
   },
 };

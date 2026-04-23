@@ -109,24 +109,16 @@ router.get(
 
 // Get all rounds with answers for a specific player in a room
 router.get(
-  "/:roomId/player/:playerId",
+  "/:roomId/round-answers",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roomId = parseInt(req.params.roomId as string);
-      const playerId = parseInt(req.params.playerId as string);
 
       if (isNaN(roomId)) {
         return res.status(400).json({ message: "Invalid room ID" });
       }
 
-      if (isNaN(playerId)) {
-        return res.status(400).json({ message: "Invalid player ID" });
-      }
-
-      const result = await roundService.getRoundsByPlayerInRoom(
-        roomId,
-        playerId,
-      );
+      const result = await roundService.getRoundsByPlayerInRoom(roomId);
       res.json(result);
     } catch (error) {
       next(error);
