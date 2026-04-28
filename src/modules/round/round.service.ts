@@ -60,6 +60,7 @@ export const roundService = {
         createdAt: rounds.createdAt,
       })
       .from(rounds)
+      .where(eq(rounds.id, roundId))
       .leftJoin(
         categories,
         sql`${categories.id} = ANY(string_to_array(${rounds.categoryIds}, ',')::int[])`,
@@ -69,7 +70,7 @@ export const roundService = {
     if (!round) {
       throw { status: 404, message: "Round not found" };
     }
-    logger.info(`Round with categories: ${JSON.stringify(round[0])}`);
+    logger.info(`Round with categories: ${JSON.stringify(round)}`);
     return {
       id: round[0].id,
       roomId: round[0].roomId,
@@ -208,12 +209,21 @@ export const roundService = {
       .where(eq(rooms.id, roomId))
       .returning();
 
+    const roundData = await db.query.rounds.findFirst({
+      where: and(
+        eq(rounds.roomId, roomId),
+        eq(rounds.roundNumber, newCurrentRound),
+      ),
+    });
+
     return {
       roomId: updated[0].id,
       previousRound: room.currentRound,
       currentRound: updated[0].currentRound,
       roundCount: updated[0].roundCount,
+      currentRoundId: roundData?.id,
       canIncrement: updated[0].currentRound < updated[0].roundCount,
+      roundStartedAt: updated[0].roundStartedAt,
     };
   },
 

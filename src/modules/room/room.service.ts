@@ -1,6 +1,6 @@
 import { db } from "../../db/client";
 import { rooms, players, categories, rounds } from "../../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { roomWsManager } from "./room.ws";
 import { roundService } from "../round/round.service";
 
@@ -80,6 +80,7 @@ export const roomService = {
         roundTime: input.roundTime,
         categoryIds: categoryIdsString,
         status: "WAITING",
+        currentRound: 1,
       })
       .returning();
 
@@ -108,28 +109,53 @@ export const roomService = {
   },
 
   async getRoomById(roomId: number) {
-    const room = await db.query.rooms.findFirst({
-      where: eq(rooms.id, roomId),
-    });
+    const room = await db
+      .select({
+        id: rooms.id,
+        name: rooms.name,
+        code: rooms.code,
+        roundCount: rooms.roundCount,
+        roundTime: rooms.roundTime,
+        currentRound: rooms.currentRound,
+        roundStartedAt: rooms.roundStartedAt,
+        status: rooms.status,
+        createdAt: rooms.createdAt,
+        updatedAt: rooms.updatedAt,
+        currentRoundId: rounds.id,
+        categoryIds: rooms.categoryIds,
+      })
+      .from(rooms)
+      .leftJoin(
+        rounds,
+        and(
+          eq(rounds.roomId, rooms.id),
+          eq(rounds.roundNumber, rooms.currentRound),
+        ),
+      )
+      .where(eq(rooms.id, roomId))
+      .limit(1);
 
     if (!room) {
       throw { status: 404, message: "Room not found" };
     }
 
-    const categoryIds = room.categoryIds.split(",").map((id) => parseInt(id));
+    const categoryIds = room[0].categoryIds
+      .split(",")
+      .map((id) => parseInt(id));
 
     return {
-      id: room.id,
-      name: room.name,
-      code: room.code,
-      roundCount: room.roundCount,
-      roundTime: room.roundTime,
-      currentRound: room.currentRound,
-      roundStartedAt: room.roundStartedAt,
+      id: room[0].id,
+      name: room[0].name,
+      code: room[0].code,
+      roundCount: room[0].roundCount,
+      roundTime: room[0].roundTime,
+      currentRound: room[0].currentRound,
+      roundStartedAt: room[0].roundStartedAt,
       categoryIds: categoryIds,
-      status: room.status,
-      createdAt: room.createdAt,
-      updatedAt: room.updatedAt,
+      status: room[0].status,
+      createdAt: room[0].createdAt,
+      updatedAt: room[0].updatedAt,
+      currentRoundId: room[0].currentRoundId,
     };
   },
 

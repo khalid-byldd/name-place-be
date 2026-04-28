@@ -165,6 +165,7 @@ router.post(
 // Increment room's current round (admin only)
 router.post(
   "/:roomId/increment-round",
+  authenticate,
   requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
