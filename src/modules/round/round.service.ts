@@ -70,7 +70,6 @@ export const roundService = {
     if (!round) {
       throw { status: 404, message: "Round not found" };
     }
-    logger.info(`Round with categories: ${JSON.stringify(round)}`);
     return {
       id: round[0].id,
       roomId: round[0].roomId,

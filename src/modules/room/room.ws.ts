@@ -3,6 +3,7 @@ import { db } from "../../db/client";
 import { players, rooms } from "../../db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../../utils/logger";
+import { roomService } from "./room.service";
 
 interface RoomWSClient {
   socket: any;
@@ -22,6 +23,7 @@ export const roomWsManager = {
     });
     logger.info(`Room ${roomId} initialized for WebSocket connections`);
   },
+
   async joinRoom(
     socket: any,
     roomId: number,
@@ -34,6 +36,16 @@ export const roomWsManager = {
 
     // Store metadata on socket for later use
     socket.playerName = playerName;
+
+    const roomClients = activeConnections.get(roomId)!;
+
+    // Check if player already exists
+    const alreadyExists = [...roomClients].some((c) => c.playerId === playerId);
+
+    if (alreadyExists) {
+      console.log(`Player ${playerId} already in room ${roomId}`);
+      return;
+    }
 
     const client: RoomWSClient = { socket, roomId, playerId, playerName };
     activeConnections.get(roomId)!.add(client);
@@ -96,6 +108,7 @@ export const roomWsManager = {
 
     if (clients.size === 0) {
       activeConnections.delete(roomId);
+      roomService.closeRoom(roomId).then(() => {});
     }
   },
 
@@ -140,9 +153,8 @@ export const roomWsManager = {
 
   closeRoom(roomId: number) {
     const clients = activeConnections.get(roomId);
-    if (!clients) return;
 
-    clients.forEach((client) => {
+    clients?.forEach((client) => {
       if (client.socket.readyState === 1) {
         client.socket.close(1000, "Room closed");
       }
