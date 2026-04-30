@@ -9,6 +9,7 @@ import {
 } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../../utils/logger";
+import { roomWsManager } from "../room/room.ws";
 
 export interface SubmitAnswersInput {
   playerId: number;
@@ -124,6 +125,16 @@ export const roundService = {
       })
       .returning();
 
+    roomWsManager.broadcastToRoom(round.roomId || 0, {
+      type: "ROUND_ANSWER_SUBMITTED",
+      payload: {
+        playerId: input.playerId,
+        playerName: player.name,
+        roundCount: round.roundNumber,
+        answer: input.answers.trim(),
+      },
+    });
+
     return {
       roundId: input.roundId,
       playerId: input.playerId,
@@ -213,6 +224,14 @@ export const roundService = {
         eq(rounds.roomId, roomId),
         eq(rounds.roundNumber, newCurrentRound),
       ),
+    });
+
+    roomWsManager.broadcastToRoom(roomId, {
+      type: "FETCH_NEW_ROUND",
+      payload: {
+        currentRoundId: roundData?.id,
+        roundStartedAt: updated[0].roundStartedAt,
+      },
     });
 
     return {
