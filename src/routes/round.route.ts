@@ -28,7 +28,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const roundId = parseInt(req.params.roundId as string);
-      const { playerId, answers, score, timeTaken } = req.body;
+      const { playerId, answers, timeTaken } = req.body;
 
       if (isNaN(roundId)) {
         return res.status(400).json({ message: "Invalid round ID" });
@@ -43,12 +43,13 @@ router.post(
           message: "Answers is required",
         });
       }
+      console.log(roundId, "RRRR");
 
       const result = await roundService.submitAnswers({
         playerId,
         roundId,
         answers,
-        score,
+        score: 0,
         timeTaken,
       });
 

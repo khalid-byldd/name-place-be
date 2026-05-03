@@ -1020,7 +1020,7 @@
 
 **Authentication:** Required (Bearer token)
 
-**Authorization:** Admin only
+**Authorization:** Admin only (requires both authentication and admin role)
 
 **Parameters:**
 
@@ -1147,7 +1147,7 @@
 ```json
 {
   "status": 400,
-  "message": "Expected 4 answers, got 3"
+  "message": "Answers is required"
 }
 ```
 
@@ -1217,62 +1217,48 @@
 
 ---
 
-### Get All Rounds with Answers for Player
+### Get All Round Answers in a Room
 
-**Endpoint:** `GET /rounds/:roomId/player/:playerId`
+**Endpoint:** `GET /rounds/:roomId/round-answers`
 
 **Authentication:** None
 
 **Parameters:**
 
 - `roomId` (path): Room ID (integer)
-- `playerId` (path): Player ID (integer)
 
-**Description:** Get all rounds in a room with answers submitted by a specific player
+**Description:** Get all rounds in a room with answers submitted by all players
 
 **Response (200 OK):**
 
 ```json
-{
-  "roomId": 1,
-  "playerId": 5,
-  "playerName": "John",
-  "totalRounds": 2,
-  "rounds": [
-    {
-      "id": 1,
-      "roomId": 1,
-      "roundNumber": 1,
-      "letter": "A",
-      "timeTaken": 45,
-      "score": 100,
-      "playerId": 5,
-      "answers": [
-        {
-          "id": 1,
-          "categoryId": 2,
-          "answer": "Avatar"
-        }
-      ],
-      "createdAt": "2026-04-21T10:30:00Z"
-    }
-  ]
-}
+[
+  {
+    "roundId": 1,
+    "playerId": 5,
+    "playerName": "John",
+    "letter": "A",
+    "answers": ["Avatar", "Avengers", "Apple", "Aquaman"],
+    "score": 100,
+    "timeTaken": 45,
+    "roundCount": 5,
+    "roundAnswersId": 1,
+    "categories": [
+      {"id": 1, "name": "Movies"},
+      {"id": 2, "name": "Superhero"},
+      {"id": 3, "name": "Fruits"},
+      {"id": 4, "name": "Characters"}
+    ]
+  }
+]
 ```
 
 **Errors:**
 
 ```json
-// Room not found
 {
   "status": 404,
   "message": "Room not found"
-}
-
-// Player not in room
-{
-  "status": 400,
-  "message": "Player is not in this room"
 }
 ```
 
@@ -1621,14 +1607,13 @@ Authorization: Bearer MTo0ZGdtQGV4YW1wbGUuY29t
 
 ---
 
-**Last Updated:** April 21, 2026
+**Last Updated:** May 1, 2026
 
 **Latest Changes:**
 
-- Added Categories CRUD API (Create, Read, Update, Delete)
-- Categories support pagination
-- Admin-only create/update/delete operations
-- Added increment round API for room progression
-- Added get rounds with answers for player API
-- Updated Rounds section documentation with new endpoints
+- Updated `/rounds/:roundId/submit-answers` validation error message to "Answers is required"
+- Changed endpoint from `GET /rounds/:roomId/player/:playerId` to `GET /rounds/:roomId/round-answers`
+- Removed playerId parameter - endpoint now returns all player answers in a room
+- Updated response format for round answers to include all players' submissions with category details
+- Enhanced `POST /rooms/:roomId/increment-round` with explicit authentication requirement
 - Total API Endpoints: 50+

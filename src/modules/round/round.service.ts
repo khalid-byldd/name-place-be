@@ -114,16 +114,13 @@ export const roundService = {
     }
 
     // Insert one answer per category
-    const insertedAnswers = await db
-      .insert(roundAnswers)
-      .values({
-        roundId: input.roundId,
-        playerId: input.playerId,
-        answer: input.answers.trim(),
-        timeTaken: input.timeTaken,
-        score: input.score,
-      })
-      .returning();
+    await db.insert(roundAnswers).values({
+      roundId: input.roundId,
+      playerId: input.playerId,
+      answer: input.answers.trim(),
+      timeTaken: input.timeTaken,
+      score: input.score,
+    });
 
     roomWsManager.broadcastToRoom(round.roomId || 0, {
       type: "ROUND_ANSWER_SUBMITTED",
@@ -132,13 +129,13 @@ export const roundService = {
         playerName: player.name,
         roundCount: round.roundNumber,
         answer: input.answers.trim(),
+        roundId: input.roundId,
       },
     });
 
     return {
       roundId: input.roundId,
       playerId: input.playerId,
-      answers: insertedAnswers[0].answer,
     };
   },
 
@@ -268,7 +265,7 @@ export const roundService = {
 
         score: roundAnswers.score,
         timeTaken: roundAnswers.timeTaken,
-        roundCount: rooms.roundCount,
+        roundCount: rounds.roundNumber,
         roundAnswersId: roundAnswers.id,
 
         // categories as JSON array
