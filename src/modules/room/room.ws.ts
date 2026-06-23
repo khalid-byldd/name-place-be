@@ -14,6 +14,9 @@ interface RoomWSClient {
 
 const activeConnections = new Map<number, Set<RoomWSClient>>();
 const roomMetadata = new Map<number, { name: string; createdAt: Date }>();
+// Grace period before auto-closing an empty room — prevents brief network drops
+// (common through reverse proxies like Caddy) from permanently destroying the room
+const pendingCloseTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 export const roomWsManager = {
   initializeRoom(roomId: number, roomName: string) {
@@ -30,6 +33,14 @@ export const roomWsManager = {
     playerId: number,
     playerName: string,
   ) {
+    // Cancel any pending auto-close for this room (player reconnected in time)
+    const pendingTimer = pendingCloseTimers.get(roomId);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      pendingCloseTimers.delete(roomId);
+      logger.info(`Cancelled pending close for room ${roomId} — player reconnected`);
+    }
+
     if (!activeConnections.has(roomId)) {
       activeConnections.set(roomId, new Set());
     }
@@ -39,12 +50,11 @@ export const roomWsManager = {
 
     const roomClients = activeConnections.get(roomId)!;
 
-    // Check if player already exists
-    const alreadyExists = [...roomClients].some((c) => c.playerId === playerId);
-
-    if (alreadyExists) {
-      console.log(`Player ${playerId} already in room ${roomId}`);
-      return;
+    // If player already exists (e.g. reconnect after network drop), replace old socket
+    const existingClient = [...roomClients].find((c) => c.playerId === playerId);
+    if (existingClient) {
+      logger.info(`Player ${playerId} reconnected to room ${roomId}, replacing old socket`);
+      roomClients.delete(existingClient);
     }
 
     const client: RoomWSClient = { socket, roomId, playerId, playerName };
@@ -107,8 +117,19 @@ export const roomWsManager = {
     }
 
     if (clients.size === 0) {
-      activeConnections.delete(roomId);
-      roomService.closeRoom(roomId).then(() => {});
+      // Wait 30 seconds before closing — gives players time to reconnect after
+      // brief network drops (especially common behind reverse proxies like Caddy).
+      // If any player rejoins within this window, joinRoom() cancels this timer.
+      const timer = setTimeout(() => {
+        pendingCloseTimers.delete(roomId);
+        if ((activeConnections.get(roomId)?.size ?? 0) === 0) {
+          activeConnections.delete(roomId);
+          roomService.closeRoom(roomId).catch(() => {});
+          logger.info(`Room ${roomId} auto-closed after grace period (no reconnects)`);
+        }
+      }, 30_000);
+      pendingCloseTimers.set(roomId, timer);
+      logger.info(`Room ${roomId} is empty — starting 30s grace period before auto-close`);
     }
   },
 
@@ -152,6 +173,12 @@ export const roomWsManager = {
   },
 
   closeRoom(roomId: number) {
+    const pending = pendingCloseTimers.get(roomId);
+    if (pending) {
+      clearTimeout(pending);
+      pendingCloseTimers.delete(roomId);
+    }
+
     const clients = activeConnections.get(roomId);
 
     clients?.forEach((client) => {
