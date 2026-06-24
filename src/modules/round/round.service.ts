@@ -32,19 +32,24 @@ export const roundService = {
     categoryIds: number[],
   ) {
     const createdRounds = [];
+    const letters: string[] = [];
 
     for (let i = 1; i <= roundCount; i++) {
-      const newRound = await db
-        .insert(rounds)
-        .values({
-          roomId,
-          roundNumber: i,
-          letter: this.getRandomLetter(),
-          categoryIds: categoryIds.join(","), // Store category IDs as a comma-separated string
-        })
-        .returning();
+      const word = this.getRandomLetter();
+      if (!letters.filter((l) => l === word).length) {
+        const newRound = await db
+          .insert(rounds)
+          .values({
+            roomId,
+            roundNumber: i,
+            letter: word,
+            categoryIds: categoryIds.join(","), // Store category IDs as a comma-separated string
+          })
+          .returning();
 
-      createdRounds.push(newRound[0]);
+        createdRounds.push(newRound[0]);
+      }
+      letters.push(word);
     }
 
     return createdRounds;
